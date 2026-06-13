@@ -70,4 +70,4 @@ export const SORT_OPTIONS = [
 ];
 
 // API base URL
-export const API_BASE_URL = "task-manager-app-production-7c24.up.railway.app";
+export const API_BASE_URL = "https://task-manager-app-production-7c24.up.railway.app/api";
