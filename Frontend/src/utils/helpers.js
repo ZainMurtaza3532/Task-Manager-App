@@ -38,6 +38,8 @@ export const getRelativeTime = (dateString) => {
   return formatDate(dateString);
 };
 
+export const formatRelativeTime = getRelativeTime;
+
 // Truncate text
 export const truncateText = (text, maxLength = 80) => {
   if (!text) return "";

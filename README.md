@@ -1,257 +1,291 @@
-# ✅ TaskFlow Pro — MERN Task Manager
+# TaskFlow Pro 2.0 — Enterprise SaaS MERN Task Manager
 
-A full-stack task management application built with the **MERN** stack (MongoDB, Express, React, Node.js). Manage your tasks with a modern, responsive UI featuring a Kanban board, analytics dashboard, dark/light themes, and more.
+A production-ready, enterprise-level full-stack task management SaaS built with the **MERN** stack. TaskFlow Pro 2.0 extends the original Task Manager with real-time notifications, team collaboration, calendar scheduling, time tracking, file uploads, and an AI assistant.
 
-🔗 **Live Demo:** [task-manager-app-theta-blue.vercel.app](https://task-manager-app-theta-blue.vercel.app)
-🔗 **API Base:** [task-manager-app-production-7c24.up.railway.app](https://task-manager-app-production-7c24.up.railway.app)
-
----
-
-## 🚀 Features
-
-### Task Management
-- ✏️ Create, edit, and delete tasks with title, description, due date, priority, category, and sub-tasks
-- 📊 Three status levels — **Pending**, **In Progress**, **Completed**
-- 🔴🟡🟢 Three priority levels — **High**, **Medium**, **Low**
-- 🗂️ Categorize tasks — General, Work, Personal, Shopping, Health, Finance, Education, Travel
-- ✅ Sub-task checklists within each task
-- 🔍 Search, filter, and sort tasks
-
-### Views
-- 📋 **Task List** — Filterable and sortable task cards
-- 📌 **Kanban Board** — Drag-and-drop tasks across status columns (powered by `@dnd-kit`)
-- 📈 **Dashboard** — Visual analytics with Chart.js (Pie chart for status, Bar chart for priority)
-- ✅ **Completed Tasks** — Dedicated view for finished tasks
-
-### User Experience
-- 🌙 **Dark / Light Theme** toggle
-- 🗑️ **Soft Delete & Trash** — Move tasks to trash, restore, or permanently delete
-- 🧹 **Empty Trash** — Bulk permanent deletion
-- 🔐 **Authentication** — JWT-based register, login, and protected routes
-- ⚙️ **Settings** — Update profile name, email, and password
+🔗 **Live Demo:** [task-manager-app-theta-blue.vercel.app](https://task-manager-app-theta-blue.vercel.app)  
+🔗 **API:** [task-manager-app-production-7c24.up.railway.app](https://task-manager-app-production-7c24.up.railway.app)
 
 ---
 
-## 🛠️ Tech Stack
+## Features
 
-### Frontend
-| Technology | Purpose |
-|---|---|
-| **React 19** | UI framework |
-| **Vite** | Build tool & dev server |
-| **React Router v7** | Client-side routing |
-| **Axios** | HTTP client |
-| **Chart.js + react-chartjs-2** | Dashboard analytics charts |
-| **@dnd-kit** | Kanban drag-and-drop |
-| **Lucide React** | Icon library |
-| **date-fns** | Date formatting |
-| **Tailwind CSS v4** | Utility-first styling |
+### Core (v1.0)
+- JWT Authentication, Protected Routes, User Settings
+- Task CRUD, Status/Priority/Category, Sub-tasks
+- Search, Filter, Sort, Dashboard Analytics
+- Kanban Board (Drag & Drop), Dark/Light Theme
+- Soft Delete & Trash System
 
-### Backend
-| Technology | Purpose |
-|---|---|
-| **Node.js** | Runtime |
-| **Express v5** | Web framework |
-| **MongoDB + Mongoose** | Database & ODM |
-| **JWT (jsonwebtoken)** | Authentication tokens |
-| **bcryptjs** | Password hashing |
-| **cors** | Cross-origin resource sharing |
-| **morgan** | HTTP request logging |
-| **dotenv** | Environment variables |
+### Enterprise (v2.0)
 
-### Deployment
-| Service | Usage |
-|---|---|
-| **Vercel** | Frontend hosting |
-| **Railway** | Backend hosting |
-| **MongoDB Atlas** | Cloud database |
+| Feature | Capabilities |
+|---------|-------------|
+| **Real-Time Notifications** | Socket.IO, task updates, assignments, due date reminders, browser push, notification center, read/unread, history, toasts |
+| **Team Collaboration** | Workspaces, teams, invite links, member management, task assignment, team dashboard, activity feed, team chat, role-based permissions |
+| **Calendar View** | Monthly/weekly/daily views, drag-and-drop scheduling, due date visualization, filters & search |
+| **Time Tracking** | Start/pause/resume/stop timer, manual entries, task logs, weekly/monthly reports, charts |
+| **File Uploads** | Cloudinary storage for images, PDF, DOCX, PPTX, Excel, ZIP — preview, download, delete, drag & drop |
+| **AI Assistant** | OpenAI-powered task breakdown, suggestions, priority prediction, productivity insights, chat interface |
+
+### Roles & Permissions
+
+| Role | Permissions |
+|------|------------|
+| **Admin** | Full access — manage workspace, teams, members, all tasks |
+| **Manager** | Create/edit/delete tasks, assign, invite members |
+| **Member** | Create/edit own tasks, view team content |
+| **Viewer** | Read-only access |
 
 ---
 
-## 📁 Project Structure
+## Tech Stack
+
+| Layer | Technologies |
+|-------|-------------|
+| Frontend | React 19, Vite 6, React Router 7, Tailwind CSS 4, Chart.js, react-big-calendar, date-fns, Socket.IO Client, @dnd-kit, Lucide React |
+| Backend | Node.js, Express 5, Mongoose 8, Socket.IO, JWT, bcryptjs, Helmet, Rate Limiting, Multer, Cloudinary, OpenAI |
+| Database | MongoDB Atlas |
+| Deployment | Vercel (FE), Railway (BE) |
+
+---
+
+## Project Structure
 
 ```
 Task Manager App/
-├── Frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   │   ├── EditModal.jsx       # Task edit modal
-│   │   │   ├── FilterPanel.jsx     # Search & filter controls
-│   │   │   ├── Header.jsx          # Top navigation bar
-│   │   │   ├── Layout.jsx          # App shell layout
-│   │   │   ├── ProtectedRoute.jsx  # Auth guard wrapper
-│   │   │   ├── Sidebar.jsx         # Side navigation
-│   │   │   ├── TaskCard.jsx        # Individual task card
-│   │   │   └── TaskForm.jsx        # Task create/edit form
-│   │   ├── context/
-│   │   │   ├── AuthContext.jsx      # Authentication state
-│   │   │   ├── TaskContext.jsx      # Task CRUD state
-│   │   │   ├── ThemeContext.jsx     # Dark/light theme
-│   │   │   └── ToastContext.jsx     # Toast notifications
-│   │   ├── hooks/
-│   │   ├── pages/
-│   │   │   ├── AddTask.jsx          # New task page
-│   │   │   ├── CompletedTasks.jsx   # Completed tasks view
-│   │   │   ├── Dashboard.jsx        # Analytics dashboard
-│   │   │   ├── Kanban.jsx           # Kanban board view
-│   │   │   ├── Login.jsx            # Login page
-│   │   │   ├── Settings.jsx         # User settings
-│   │   │   ├── Signup.jsx           # Registration page
-│   │   │   ├── Tasks.jsx            # All tasks view
-│   │   │   └── Trash.jsx            # Trashed tasks
-│   │   ├── services/
-│   │   │   └── api.js               # Axios instance & API calls
-│   │   ├── utils/
-│   │   │   ├── constants.js         # App constants & API URL
-│   │   │   └── helpers.js           # Utility functions
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   └── main.jsx
-│   ├── package.json
-│   └── vite.config.js
-│
 ├── Backend/
-│   ├── config/
-│   │   └── db.js                    # MongoDB connection
-│   ├── controllers/
-│   │   ├── authController.js        # Auth logic
-│   │   └── taskController.js        # Task CRUD logic
-│   ├── middleware/
-│   │   ├── authMiddleware.js        # JWT verification
-│   │   └── errorHandler.js          # Global error handler
-│   ├── models/
-│   │   ├── Task.js                  # Task Mongoose schema
-│   │   └── User.js                  # User Mongoose schema
-│   ├── routes/
-│   │   ├── authRoutes.js            # /api/auth routes
-│   │   └── taskRoutes.js            # /api/tasks routes
-│   ├── server.js                    # Express app entry point
-│   ├── .env                         # Environment variables
-│   └── package.json
+│   ├── config/          # db.js, cloudinary.js, socket.js
+│   ├── controllers/     # auth, task, notification, workspace, team, time, file, ai, chat, calendar
+│   ├── middleware/      # auth, errorHandler, rateLimiter, upload, permissions
+│   ├── models/          # User, Task, Workspace, Team, Notification, TimeEntry, ChatMessage, Activity
+│   ├── routes/          # API route definitions
+│   ├── utils/           # notificationService, permissions
+│   ├── jobs/            # dueDateReminder cron
+│   └── server.js        # HTTP + Socket.IO entry point
+│
+├── Frontend/
+│   └── src/
+│       ├── components/  # NotificationCenter, WorkspaceSwitcher, FileUpload, TimerWidget, TeamChat, etc.
+│       ├── context/     # Auth, Task, Theme, Toast, Socket, Notification, Workspace
+│       ├── hooks/       # useDebounce, useTimer
+│       ├── pages/       # Dashboard, Calendar, Teams, TimeTracking, AIAssistant, etc.
+│       └── services/    # api.js, socket.js
 │
 └── README.md
 ```
 
 ---
 
-## 🔌 API Endpoints
+## Database Design
 
-### Authentication — `/api/auth`
+```
+User ──┬── owns ──> Workspace ── contains ──> Team
+       │                │                      │
+       │                └── members[]           └── members[], chat, activities
+       │
+       ├── creates ──> Task ── belongs to ──> Workspace / Team
+       │                  ├── assignee (User)
+       │                  ├── attachments[]
+       │                  └── time entries
+       │
+       ├── receives ──> Notification
+       └── logs ──> TimeEntry
+```
 
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| `POST` | `/api/auth/register` | Register a new user | ❌ |
-| `POST` | `/api/auth/login` | Login & receive JWT | ❌ |
-| `GET` | `/api/auth/me` | Get current user profile | ✅ |
-| `PUT` | `/api/auth/profile` | Update name & email | ✅ |
-| `PUT` | `/api/auth/password` | Change password | ✅ |
+### Key Models
 
-### Tasks — `/api/tasks`
-
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| `POST` | `/api/tasks` | Create a new task | ✅ |
-| `GET` | `/api/tasks` | Get all active tasks (supports `?search`, `?status`, `?priority`, `?category`, `?sort`) | ✅ |
-| `GET` | `/api/tasks/stats` | Get task statistics for dashboard | ✅ |
-| `GET` | `/api/tasks/trash` | Get all trashed tasks | ✅ |
-| `GET` | `/api/tasks/:id` | Get a single task | ✅ |
-| `PUT` | `/api/tasks/:id` | Update a task | ✅ |
-| `PATCH` | `/api/tasks/:id/trash` | Soft delete (move to trash) | ✅ |
-| `PATCH` | `/api/tasks/:id/restore` | Restore from trash | ✅ |
-| `DELETE` | `/api/tasks/:id` | Permanently delete a task | ✅ |
-| `DELETE` | `/api/tasks/trash/empty` | Empty all trashed tasks | ✅ |
+- **Workspace** — `name`, `owner`, `members[{user, role}]`, `settings`
+- **Team** — `name`, `workspace`, `members[{user, role}]`, `inviteCode`, `color`
+- **Task** — extended with `workspace`, `team`, `assignee`, `scheduledDate`, `attachments[]`, `estimatedMinutes`, `loggedMinutes`
+- **Notification** — `recipient`, `type`, `title`, `message`, `isRead`, linked entities
+- **TimeEntry** — `user`, `task`, `startTime`, `endTime`, `duration`, `isRunning`, `isPaused`
+- **ChatMessage** — `team`, `sender`, `content`
+- **Activity** — `team`, `actor`, `action`, `description`
 
 ---
 
-## ⚙️ Local Development Setup
+## API Endpoints
+
+### Auth — `/api/auth`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/register` | Register user |
+| POST | `/login` | Login & JWT |
+| GET | `/me` | Current user |
+| PUT | `/profile` | Update profile |
+| PUT | `/password` | Change password |
+
+### Tasks — `/api/tasks`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| CRUD | `/`, `/:id` | Task operations (team/workspace aware) |
+| GET | `/stats` | Dashboard statistics |
+| GET/PATCH/DELETE | `/trash/*` | Trash operations |
+
+### Notifications — `/api/notifications`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List notifications (paginated) |
+| GET | `/unread-count` | Unread count |
+| PATCH | `/:id/read` | Mark as read |
+| PATCH | `/read-all` | Mark all read |
+| DELETE | `/:id` | Delete notification |
+
+### Workspaces — `/api/workspaces`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/` | Create workspace |
+| GET | `/` | List workspaces |
+| GET | `/:id` | Workspace + teams |
+| PUT | `/:id` | Update workspace |
+| POST | `/:id/switch` | Switch active workspace |
+| POST | `/:id/invite` | Invite member by email |
+| PUT/DELETE | `/:id/members/:memberId` | Manage members |
+
+### Teams — `/api/teams`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/` | Create team |
+| GET | `/` | List teams |
+| POST | `/join` | Join via invite code |
+| GET | `/:id` | Team dashboard data |
+| POST | `/:id/invite` | Invite member |
+| POST | `/:id/regenerate-invite` | New invite link |
+| GET | `/:id/activity` | Activity feed |
+| GET/POST | `/:teamId/chat` | Team chat messages |
+
+### Time Entries — `/api/time-entries`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List entries |
+| GET | `/running` | Active timer |
+| POST | `/start` | Start timer |
+| PATCH | `/:id/pause\|resume\|stop` | Timer controls |
+| POST | `/manual` | Manual entry |
+| GET | `/reports` | Productivity reports |
+
+### Files — `/api/files`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/:taskId` | List attachments |
+| POST | `/:taskId` | Upload files (multipart) |
+| DELETE | `/:taskId/:attachmentId` | Delete file |
+
+### Calendar — `/api/calendar`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Tasks by date range |
+| PATCH | `/:id/schedule` | Reschedule task |
+
+### AI — `/api/ai`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/breakdown` | AI task breakdown |
+| POST | `/suggest` | Task suggestions |
+| POST | `/predict-priority` | Priority prediction |
+| GET | `/insights` | Productivity insights |
+| POST | `/chat` | AI chat assistant |
+
+### Socket.IO Events
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `notification` | Server → Client | New notification |
+| `task_update` | Server → Client | Real-time task changes |
+| `team_activity` | Server → Client | Team activity feed |
+| `chat_message` | Server → Client | New chat message |
+| `join_workspace` | Client → Server | Join workspace room |
+| `join_team` | Client → Server | Join team room |
+
+---
+
+## Local Development
 
 ### Prerequisites
+- Node.js 18+, MongoDB Atlas (or local MongoDB)
+- Cloudinary account (for file uploads)
+- OpenAI API key (for AI features)
 
-- **Node.js** v18+ and **npm**
-- **MongoDB** (local instance or [MongoDB Atlas](https://www.mongodb.com/atlas) cluster)
-- **Git**
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/ZainMurtaza3532/Task-Manager-App.git
-cd Task-Manager-App
-```
-
-### 2. Backend Setup
+### Backend
 
 ```bash
 cd Backend
 npm install
-```
-
-Create a `.env` file in `Backend/`:
-
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret_key
-```
-
-Start the backend server:
-
-```bash
+cp .env.example .env   # Fill in your credentials
 npm run dev
 ```
 
-The API will be running at `http://localhost:5000`.
-
-### 3. Frontend Setup
+### Frontend
 
 ```bash
 cd Frontend
 npm install
-```
-
-> **Note:** For local development, update `API_BASE_URL` in `Frontend/src/utils/constants.js` to:
-> ```js
-> export const API_BASE_URL = "http://127.0.0.1:5000/api";
-> ```
-
-Start the frontend dev server:
-
-```bash
+cp .env.example .env
 npm run dev
 ```
 
-The app will be running at `http://localhost:5173`.
+**Frontend `.env`:**
+```env
+VITE_API_URL=http://127.0.0.1:5000/api
+VITE_SOCKET_URL=http://127.0.0.1:5000
+```
+
+**Backend `.env`:**
+```env
+PORT=5000
+MONGODB_URI=your_mongodb_uri
+JWT_SECRET=your_secret
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+OPENAI_API_KEY=your_openai_key
+OPENAI_MODEL=gpt-4o-mini
+```
 
 ---
 
-## 🌐 Deployment
+## Deployment Guide
 
-| Component | Platform | URL |
-|---|---|---|
-| Frontend | Vercel | [task-manager-app-theta-blue.vercel.app](https://task-manager-app-theta-blue.vercel.app) |
-| Backend | Railway | [task-manager-app-production-7c24.up.railway.app](https://task-manager-app-production-7c24.up.railway.app) |
-| Database | MongoDB Atlas | Cloud-hosted cluster |
+### Backend (Railway)
+1. Connect GitHub repo to Railway
+2. Set root directory to `Backend`
+3. Add environment variables from `.env.example`
+4. Railway auto-assigns `PORT` — Socket.IO works on the same port
 
-### Environment Variables (Production)
+### Frontend (Vercel)
+1. Connect repo, set root to `Frontend`
+2. Add environment variables:
+   - `VITE_API_URL` = your Railway API URL + `/api`
+   - `VITE_SOCKET_URL` = your Railway URL (without `/api`)
+3. Deploy
 
-**Backend (Railway):**
-| Variable | Description |
-|---|---|
-| `PORT` | Server port (Railway auto-assigns) |
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `JWT_SECRET` | Secret key for JWT signing |
-
----
-
-## 👤 Author
-
-**Zain Murtaza**
-
-- GitHub: [@ZainMurtaza3532](https://github.com/ZainMurtaza3532)
+### Post-Deploy Checklist
+- [ ] Add Vercel URL to backend CORS origins in `server.js`
+- [ ] Verify MongoDB Atlas IP whitelist (0.0.0.0/0 for cloud)
+- [ ] Test Socket.IO connection from production frontend
+- [ ] Configure Cloudinary upload presets
+- [ ] Set OpenAI API key and monitor usage
 
 ---
 
-## 📄 License
+## Step-by-Step Implementation Order
 
-This project is licensed under the **ISC License**.
+1. **Security layer** — Helmet, rate limiting, mongo sanitize, RBAC middleware
+2. **Models** — Workspace, Team, Notification, TimeEntry, extend Task/User
+3. **Socket.IO** — HTTP server + authenticated socket rooms
+4. **Notifications** — Schema, API, service, cron due-date reminders
+5. **Teams** — Workspace/team CRUD, invites, activity logging, chat
+6. **Calendar** — Date-range API, react-big-calendar with drag-and-drop
+7. **Time Tracking** — Timer state machine, reports aggregation
+8. **Files** — Multer + Cloudinary upload pipeline
+9. **AI** — OpenAI integration with rate limiting
+10. **Frontend** — Contexts, pages, lazy-loaded routes, responsive UI
+
+---
+
+## Author
+
+**Zain Murtaza** — [GitHub](https://github.com/ZainMurtaza3532)
+
+## License
+
+ISC License

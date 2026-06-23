@@ -1,31 +1,24 @@
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 
-// Axios instance with defaults
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
-// Add a request interceptor to attach JWT token
 api.interceptors.request.use(
   (config) => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.token) {
-      config.headers.Authorization = `Bearer ${user.token}`;
-    }
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (user?.token) config.headers.Authorization = `Bearer ${user.token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor to handle 401 Unauthorized errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response?.status === 401) {
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
@@ -33,93 +26,97 @@ api.interceptors.response.use(
   }
 );
 
-// ──────────── Auth API Calls ────────────
+// Auth
+export const registerUser = (data) => api.post("/auth/register", data).then((r) => r.data);
+export const loginUser = (data) => api.post("/auth/login", data).then((r) => r.data);
+export const getMe = () => api.get("/auth/me").then((r) => r.data);
+export const updateProfile = (data) => api.put("/auth/profile", data).then((r) => r.data);
+export const updatePassword = (data) => api.put("/auth/password", data).then((r) => r.data);
 
-export const registerUser = async (userData) => {
-  const response = await api.post("/auth/register", userData);
-  return response.data;
+// Tasks
+export const fetchTasks = (params = {}) => api.get("/tasks", { params }).then((r) => r.data);
+export const fetchTaskStats = () => api.get("/tasks/stats").then((r) => r.data);
+export const fetchTrashedTasks = () => api.get("/tasks/trash").then((r) => r.data);
+export const fetchTaskById = (id) => api.get(`/tasks/${id}`).then((r) => r.data);
+export const createTask = (data) => api.post("/tasks", data).then((r) => r.data);
+export const updateTask = (id, data) => api.put(`/tasks/${id}`, data).then((r) => r.data);
+export const softDeleteTask = (id) => api.patch(`/tasks/${id}/trash`).then((r) => r.data);
+export const restoreTask = (id) => api.patch(`/tasks/${id}/restore`).then((r) => r.data);
+export const permanentDeleteTask = (id) => api.delete(`/tasks/${id}`).then((r) => r.data);
+export const emptyTrash = () => api.delete("/tasks/trash/empty").then((r) => r.data);
+
+// Notifications
+export const fetchNotifications = (params = {}) => api.get("/notifications", { params }).then((r) => r.data);
+export const fetchUnreadCount = () => api.get("/notifications/unread-count").then((r) => r.data);
+export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`).then((r) => r.data);
+export const markAllNotificationsRead = () => api.patch("/notifications/read-all").then((r) => r.data);
+export const deleteNotification = (id) => api.delete(`/notifications/${id}`).then((r) => r.data);
+
+// Workspaces
+export const fetchWorkspaces = () => api.get("/workspaces").then((r) => r.data);
+export const fetchWorkspace = (id) => api.get(`/workspaces/${id}`).then((r) => r.data);
+export const createWorkspace = (data) => api.post("/workspaces", data).then((r) => r.data);
+export const updateWorkspace = (id, data) => api.put(`/workspaces/${id}`, data).then((r) => r.data);
+export const switchWorkspace = (id) => api.post(`/workspaces/${id}/switch`).then((r) => r.data);
+export const inviteToWorkspace = (id, data) => api.post(`/workspaces/${id}/invite`, data).then((r) => r.data);
+export const updateWorkspaceMemberRole = (id, memberId, role) =>
+  api.put(`/workspaces/${id}/members/${memberId}/role`, { role }).then((r) => r.data);
+export const removeWorkspaceMember = (id, memberId) =>
+  api.delete(`/workspaces/${id}/members/${memberId}`).then((r) => r.data);
+
+// Teams
+export const fetchTeams = (params = {}) => api.get("/teams", { params }).then((r) => r.data);
+export const fetchTeam = (id) => api.get(`/teams/${id}`).then((r) => r.data);
+export const createTeam = (data) => api.post("/teams", data).then((r) => r.data);
+export const updateTeam = (id, data) => api.put(`/teams/${id}`, data).then((r) => r.data);
+export const inviteTeamMember = (id, data) => api.post(`/teams/${id}/invite`, data).then((r) => r.data);
+export const joinTeamByInvite = (inviteCode) => api.post("/teams/join", { inviteCode }).then((r) => r.data);
+export const regenerateTeamInvite = (id) => api.post(`/teams/${id}/regenerate-invite`).then((r) => r.data);
+export const updateTeamMemberRole = (id, memberId, role) =>
+  api.put(`/teams/${id}/members/${memberId}/role`, { role }).then((r) => r.data);
+export const removeTeamMember = (id, memberId) =>
+  api.delete(`/teams/${id}/members/${memberId}`).then((r) => r.data);
+export const fetchTeamActivity = (id) => api.get(`/teams/${id}/activity`).then((r) => r.data);
+export const fetchChatMessages = (teamId, params = {}) =>
+  api.get(`/teams/${teamId}/chat`, { params }).then((r) => r.data);
+export const sendChatMessage = (teamId, content) =>
+  api.post(`/teams/${teamId}/chat`, { content }).then((r) => r.data);
+
+// Time Tracking
+export const fetchTimeEntries = (params = {}) => api.get("/time-entries", { params }).then((r) => r.data);
+export const fetchRunningTimer = () => api.get("/time-entries/running").then((r) => r.data);
+export const startTimer = (data) => api.post("/time-entries/start", data).then((r) => r.data);
+export const pauseTimer = (id) => api.patch(`/time-entries/${id}/pause`).then((r) => r.data);
+export const resumeTimer = (id) => api.patch(`/time-entries/${id}/resume`).then((r) => r.data);
+export const stopTimer = (id) => api.patch(`/time-entries/${id}/stop`).then((r) => r.data);
+export const createManualTimeEntry = (data) => api.post("/time-entries/manual", data).then((r) => r.data);
+export const deleteTimeEntry = (id) => api.delete(`/time-entries/${id}`).then((r) => r.data);
+export const fetchTimeReports = (period = "week") =>
+  api.get("/time-entries/reports", { params: { period } }).then((r) => r.data);
+export const fetchTaskTimeLogs = (taskId) => api.get(`/time-entries/task/${taskId}`).then((r) => r.data);
+
+// Files
+export const uploadTaskFiles = (taskId, files) => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  return api.post(`/files/${taskId}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }).then((r) => r.data);
 };
+export const deleteTaskFile = (taskId, attachmentId) =>
+  api.delete(`/files/${taskId}/${attachmentId}`).then((r) => r.data);
+export const fetchTaskAttachments = (taskId) => api.get(`/files/${taskId}`).then((r) => r.data);
 
-export const loginUser = async (userData) => {
-  const response = await api.post("/auth/login", userData);
-  return response.data;
-};
+// Calendar
+export const fetchCalendarTasks = (params) => api.get("/calendar", { params }).then((r) => r.data);
+export const scheduleTask = (id, data) => api.patch(`/calendar/${id}/schedule`, data).then((r) => r.data);
 
-export const getMe = async () => {
-  const response = await api.get("/auth/me");
-  return response.data;
-};
-
-export const updateProfile = async (userData) => {
-  const response = await api.put("/auth/profile", userData);
-  return response.data;
-};
-
-export const updatePassword = async (passwordData) => {
-  const response = await api.put("/auth/password", passwordData);
-  return response.data;
-};
-
-// ──────────── Task API Calls ────────────
-
-// Get all active tasks (with search, filter, sort)
-export const fetchTasks = async (params = {}) => {
-  const response = await api.get("/tasks", { params });
-  return response.data;
-};
-
-// Get task statistics for dashboard
-export const fetchTaskStats = async () => {
-  const response = await api.get("/tasks/stats");
-  return response.data;
-};
-
-// Get all trashed tasks
-export const fetchTrashedTasks = async () => {
-  const response = await api.get("/tasks/trash");
-  return response.data;
-};
-
-// Get single task by ID
-export const fetchTaskById = async (id) => {
-  const response = await api.get(`/tasks/${id}`);
-  return response.data;
-};
-
-// Create a new task
-export const createTask = async (taskData) => {
-  const response = await api.post("/tasks", taskData);
-  return response.data;
-};
-
-// Update a task
-export const updateTask = async (id, taskData) => {
-  const response = await api.put(`/tasks/${id}`, taskData);
-  return response.data;
-};
-
-// Soft delete — move to trash
-export const softDeleteTask = async (id) => {
-  const response = await api.patch(`/tasks/${id}/trash`);
-  return response.data;
-};
-
-// Restore from trash
-export const restoreTask = async (id) => {
-  const response = await api.patch(`/tasks/${id}/restore`);
-  return response.data;
-};
-
-// Permanently delete
-export const permanentDeleteTask = async (id) => {
-  const response = await api.delete(`/tasks/${id}`);
-  return response.data;
-};
-
-// Empty all trash
-export const emptyTrash = async () => {
-  const response = await api.delete("/tasks/trash/empty");
-  return response.data;
-};
+// AI
+export const aiBreakdownTask = (input) => api.post("/ai/breakdown", { input }).then((r) => r.data);
+export const aiSuggestTasks = () => api.post("/ai/suggest").then((r) => r.data);
+export const aiPredictPriority = (data) => api.post("/ai/predict-priority", data).then((r) => r.data);
+export const aiGetInsights = () => api.get("/ai/insights").then((r) => r.data);
+export const aiChat = (message, history = []) =>
+  api.post("/ai/chat", { message, history }).then((r) => r.data);
 
 export default api;

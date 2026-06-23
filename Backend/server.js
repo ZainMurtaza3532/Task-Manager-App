@@ -1,50 +1,67 @@
+import http from "http";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
+import { initSocket } from "./config/socket.js";
+import { startDueDateReminderJob } from "./jobs/dueDateReminder.js";
 import authRoutes from "./routes/authRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import workspaceRoutes from "./routes/workspaceRoutes.js";
+import teamRoutes from "./routes/teamRoutes.js";
+import timeEntryRoutes from "./routes/timeEntryRoutes.js";
+import fileRoutes from "./routes/fileRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import calendarRoutes from "./routes/calendarRoutes.js";
 import errorHandler from "./middleware/errorHandler.js";
+import { apiLimiter, authLimiter } from "./middleware/rateLimiter.js";
 
-// Load env vars
 dotenv.config();
-
-// Connect to MongoDB
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
 
-// Middleware
-app.use(cors({
-  origin: [
-    "https://task-manager-app-theta-blue.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ],
-  credentials: true,
-}));
-app.use(express.json());
+initSocket(server);
+startDueDateReminderJob();
+
+const corsOrigins = [
+  "https://task-manager-app-theta-blue.vercel.app",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(cors({ origin: corsOrigins, credentials: true }));
+app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
+app.use(apiLimiter);
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/tasks", taskRoutes);
-
-// Health check
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "TaskFlow Pro API is running",
-    version: "1.0.0",
+    message: "TaskFlow Pro 2.0 API is running",
+    version: "2.0.0",
+    features: ["notifications", "teams", "calendar", "time-tracking", "files", "ai"],
   });
 });
 
-// Error handler (must be last)
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/workspaces", workspaceRoutes);
+app.use("/api/teams", teamRoutes);
+app.use("/api/time-entries", timeEntryRoutes);
+app.use("/api/files", fileRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/calendar", calendarRoutes);
+
 app.use(errorHandler);
 
-// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://localhost:${PORT} and http://127.0.0.1:${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 TaskFlow Pro 2.0 running on port ${PORT}`);
 });
