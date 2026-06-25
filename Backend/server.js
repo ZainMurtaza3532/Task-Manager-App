@@ -32,8 +32,7 @@ const corsOrigins = [
   "https://task-manager-app-theta-blue.vercel.app",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-   "https://task-manager-app-production-7c24.up.railway.app",
-];
+   ];
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({ origin: corsOrigins, credentials: true }));
