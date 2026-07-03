@@ -171,56 +171,66 @@ export const chatLocal = (message, tasks, history = []) => {
   const open = tasks.filter((t) => t.status !== "completed");
   const overdue = open.filter((t) => t.dueDate && new Date(t.dueDate) < new Date());
   const high = open.filter((t) => t.priority === "high");
+  const pending = open.filter((t) => t.status === "pending");
+  const inProgress = open.filter((t) => t.status === "in-progress");
+
+  const buildTaskList = (items) => items.map((t) => `• ${t.title}${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString()})` : ""}`).join("\n");
 
   if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
-    return `Hello! I'm your TaskFlow AI assistant. You have ${open.length} open task(s). How can I help you today?`;
+    return `Hello! I'm your TaskFlow AI assistant. You have ${open.length} open task(s). I can help with planning, prioritizing, and managing your work. What would you like to do first?`;
   }
 
   if (lower.includes("overdue") || lower.includes("late")) {
-    if (overdue.length === 0) return "Great news — you have no overdue tasks! 🎉";
-    return `You have ${overdue.length} overdue task(s):\n${overdue.map((t) => `• ${t.title}`).join("\n")}\n\nI recommend tackling "${overdue[0].title}" first.`;
+    if (overdue.length === 0) {
+      return "Great news — you have no overdue tasks! Keep the momentum going by reviewing upcoming deadlines and planning your next priorities.";
+    }
+    return `You have ${overdue.length} overdue task(s):\n${buildTaskList(overdue)}\n\nStart with the most critical one: \"${overdue[0].title}\". If possible, reschedule or break it into smaller steps so you can make progress quickly.`;
   }
 
   if (lower.includes("priority") || lower.includes("important") || lower.includes("focus")) {
-    if (high.length > 0) return `Your highest priority tasks:\n${high.map((t) => `• ${t.title} (${t.status})`).join("\n")}\n\nStart with "${high[0].title}".`;
-    if (open.length > 0) return `No high-priority tasks flagged. Your next task could be "${open[0].title}" (${open[0].priority} priority).`;
-    return "All tasks are completed! Time to plan your next goals.";
+    if (high.length > 0) {
+      return `Your top priority tasks are:\n${buildTaskList(high)}\n\nI suggest beginning with \"${high[0].title}\" because it is marked high priority and likely has the biggest impact.`;
+    }
+    if (open.length > 0) {
+      return `No tasks are marked high priority right now. Here are your next candidates:\n${buildTaskList(open.slice(0, 3))}\n\nConsider making one of them a high-priority task if it has a deadline or important outcome.`;
+    }
+    return "All tasks are completed! This is a great opportunity to plan your next goals and set new priorities.";
   }
 
   if (lower.includes("suggest") || lower.includes("what should") || lower.includes("next")) {
     const { suggestions } = suggestTasksLocal(tasks);
-    if (suggestions.length === 0) return "Add some tasks and I'll suggest what to work on next!";
-    return `Here's what I recommend:\n${suggestions.map((s, i) => `${i + 1}. **${s.title}** — ${s.reason}`).join("\n")}`;
+    if (suggestions.length === 0) {
+      return "You have no open tasks to analyze yet. Add your tasks and I can suggest what to work on next based on urgency and priority.";
+    }
+    return `Here are the best next actions based on your current task list:\n${suggestions.map((s, i) => `${i + 1}. ${s.title} — ${s.reason}`).join("\n")}`;
   }
 
   if (lower.includes("how many") || lower.includes("summary") || lower.includes("status")) {
-    const pending = open.filter((t) => t.status === "pending").length;
-    const inProg = open.filter((t) => t.status === "in-progress").length;
-    return `Task Summary:\n• ${open.length} open tasks\n• ${pending} pending\n• ${inProg} in progress\n• ${overdue.length} overdue\n• ${tasks.length - open.length} completed`;
+    return `Task summary:\n• ${open.length} open tasks\n• ${pending.length} pending\n• ${inProgress.length} in progress\n• ${overdue.length} overdue\n• ${tasks.length - open.length} completed\n\nThis shows your current workload and helps identify where to focus next.`;
   }
 
   if (lower.includes("break down") || lower.includes("breakdown")) {
     const project = message.replace(/break\s*down/gi, "").trim() || "your project";
     const steps = breakdownTaskLocal(project);
-    return `Here's a breakdown for "${project}":\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
+    return `Here is a structured breakdown for \"${project}\":\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\nThese steps should help you make progress in a clear, manageable sequence.`;
   }
 
   if (lower.includes("tip") || lower.includes("productivity") || lower.includes("help")) {
     const tips = [
-      "Use the Kanban board to visualize workflow.",
-      "Set due dates on high-priority tasks.",
-      "Break large projects into sub-tasks.",
-      "Track time to understand where your hours go.",
-      "Review overdue tasks every morning.",
+      "Review the most important task first and keep your focus there.",
+      "Break larger tasks into smaller subtasks to reduce overwhelm.",
+      "Use due dates and priority flags to decide what to tackle each day.",
+      "Track time spent on tasks to improve future planning.",
+      "Check overdue tasks daily and adjust your schedule as needed.",
     ];
-    return `Productivity Tips:\n${tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}`;
+    return `Productivity suggestions:\n${tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nIf you want, I can help turn one of your tasks into a more detailed plan.`;
   }
 
   if (open.length > 0) {
-    return `I can help with task planning! You have ${open.length} open task(s). Try asking:\n• "What should I focus on?"\n• "Show overdue tasks"\n• "Break down [project name]"\n• "Give me a task summary"`;
+    return `I can help you with your task planning and prioritization. You currently have ${open.length} open task(s). Try asking:\n• What should I focus on next?\n• Which tasks are overdue?\n• How should I prioritize my work?\n• Help me break down a task into steps.`;
   }
 
-  return "I'm here to help with task management! Add some tasks and ask me about priorities, suggestions, or productivity tips.";
+  return "I'm ready to help you manage your tasks. Add a task to get personalized advice, or ask me for planning tips and priority guidance.";
 };
 
 export const isOpenAIError = (error) => {

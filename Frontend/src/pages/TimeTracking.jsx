@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Play, Pause, Square, Plus, Clock, BarChart3 } from "lucide-react";
+import { Play, Pause, Square, Plus, Clock, BarChart3, Wifi } from "lucide-react";
 import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
 import { useTimer } from "../hooks/useTimer";
 import { useTasks } from "../context/TaskContext";
+import { useSocket } from "../context/SocketContext";
 import { fetchTimeEntries, fetchTimeReports, createManualTimeEntry, deleteTimeEntry } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import { formatDate } from "../utils/helpers";
@@ -13,6 +14,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 const TimeTracking = () => {
   const { tasks } = useTasks();
   const { entry, formatted, isRunning, isPaused, loading, start, pause, resume, stop } = useTimer();
+  const { connected, subscribe } = useSocket();
   const { addToast } = useToast();
   const [selectedTask, setSelectedTask] = useState("");
   const [entries, setEntries] = useState([]);
@@ -38,6 +40,29 @@ const TimeTracking = () => {
     };
     load();
   }, [period, entry]);
+
+  useEffect(() => {
+    const refreshData = async () => {
+      try {
+        const [entriesRes, reportRes] = await Promise.all([
+          fetchTimeEntries({ limit: 20 }),
+          fetchTimeReports(period),
+        ]);
+        setEntries(entriesRes.data || []);
+        setReport(reportRes.data);
+      } catch {
+        // ignore socket refresh errors
+      }
+    };
+
+    const unsubs = [
+      subscribe("time_entry_created", refreshData),
+      subscribe("time_entry_updated", refreshData),
+      subscribe("time_entry_deleted", refreshData),
+    ];
+
+    return () => unsubs.forEach((unsub) => unsub && unsub());
+  }, [subscribe, period]);
 
   const handleStart = async () => {
     if (!selectedTask) { addToast("Select a task first", "error"); return; }
@@ -75,6 +100,9 @@ const TimeTracking = () => {
         <div>
           <h1 className="page-title">Time Tracking</h1>
           <p className="page-subtitle">Track time spent on your tasks</p>
+          <span className={`badge ${connected ? "badge-success" : "badge-muted"}`}>
+            <Wifi size={14} /> {connected ? "Live sync enabled" : "Offline / sync disabled"}
+          </span>
         </div>
         <button className="btn btn-secondary" onClick={() => setShowManual(!showManual)}>
           <Plus size={16} /> Manual Entry

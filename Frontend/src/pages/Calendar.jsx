@@ -8,6 +8,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import { fetchCalendarTasks, scheduleTask } from "../services/api";
 import { useToast } from "../context/ToastContext";
+import { useSocket } from "../context/SocketContext";
 import { PRIORITIES, STATUSES } from "../utils/constants";
 
 const DnDCalendar = withDragAndDrop(BigCalendar);
@@ -16,6 +17,7 @@ const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales
 const priorityColors = { high: "#ef4444", medium: "#f59e0b", low: "#10b981" };
 
 const CalendarPage = () => {
+  const { subscribe } = useSocket();
   const { addToast } = useToast();
   const [events, setEvents] = useState([]);
   const [view, setView] = useState("month");
@@ -24,6 +26,7 @@ const CalendarPage = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -51,6 +54,20 @@ const CalendarPage = () => {
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
+  useEffect(() => {
+    const refresh = (payload) => {
+      if (payload?.task) loadEvents();
+    };
+    const unsub1 = subscribe("task_update", refresh);
+    const unsub2 = subscribe("task_updated", refresh);
+    const unsub3 = subscribe("task_scheduled", refresh);
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+    };
+  }, [subscribe, loadEvents]);
+
   const eventStyleGetter = (event) => ({
     style: {
       backgroundColor: priorityColors[event.resource?.priority] || "#6366f1",
@@ -61,6 +78,15 @@ const CalendarPage = () => {
       opacity: event.resource?.status === "completed" ? 0.6 : 1,
     },
   });
+
+  const EventRenderer = ({ event }) => (
+    <div className="calendar-event-card">
+      <strong>{event.title}</strong>
+      <div className="calendar-event-meta">
+        {PRIORITIES[event.resource?.priority]?.label || event.resource?.priority} • {STATUSES[event.resource?.status]?.label || event.resource?.status}
+      </div>
+    </div>
+  );
 
   const handleEventDrop = async ({ event, start }) => {
     try {
@@ -80,6 +106,17 @@ const CalendarPage = () => {
         <div>
           <h1 className="page-title">Calendar</h1>
           <p className="page-subtitle">Schedule and visualize your tasks</p>
+        </div>
+      </div>
+
+      <div className="calendar-summary-row">
+        <div className="summary-card">
+          <span className="summary-label">Visible tasks</span>
+          <strong>{events.length}</strong>
+        </div>
+        <div className="summary-card">
+          <span className="summary-label">Selected view</span>
+          <strong>{view.charAt(0).toUpperCase() + view.slice(1)}</strong>
         </div>
       </div>
 
@@ -116,14 +153,29 @@ const CalendarPage = () => {
           date={date}
           onNavigate={setDate}
           views={views}
-          style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}
+          style={{ height: "calc(100vh - 300px)", minHeight: "500px" }}
           eventPropGetter={eventStyleGetter}
           onEventDrop={handleEventDrop}
+          onSelectEvent={setSelectedEvent}
+          components={{ event: EventRenderer }}
           draggableAccessor={() => true}
           resizable={false}
           popup
         />
       </div>
+
+      {selectedEvent && (
+        <div className="calendar-details-card">
+          <h3>Task details</h3>
+          <p><strong>{selectedEvent.title}</strong></p>
+          <p>Status: {STATUSES[selectedEvent.resource?.status]?.label || selectedEvent.resource?.status}</p>
+          <p>Priority: {PRIORITIES[selectedEvent.resource?.priority]?.label || selectedEvent.resource?.priority}</p>
+          <p>Team: {selectedEvent.resource?.team?.name || "Personal"}</p>
+          <p>Assignee: {selectedEvent.resource?.assignee?.name || "Unassigned"}</p>
+          <p>Scheduled: {selectedEvent.resource?.scheduledDate ? new Date(selectedEvent.resource.scheduledDate).toLocaleDateString() : "Not scheduled"}</p>
+          <p>Due: {selectedEvent.resource?.dueDate ? new Date(selectedEvent.resource.dueDate).toLocaleDateString() : "No due date"}</p>
+        </div>
+      )}
 
       <div className="calendar-legend">
         {Object.entries(priorityColors).map(([p, color]) => (

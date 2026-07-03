@@ -1,5 +1,6 @@
 import TimeEntry from "../models/TimeEntry.js";
 import Task from "../models/Task.js";
+import { emitTimeEntryEvent } from "../utils/notificationService.js";
 
 const updateTaskLoggedTime = async (taskId) => {
   const entries = await TimeEntry.find({ task: taskId, isRunning: false });
@@ -69,6 +70,7 @@ export const startTimer = async (req, res, next) => {
     });
 
     const populated = await TimeEntry.findById(entry._id).populate("task", "title status priority");
+    emitTimeEntryEvent(req.user.id, populated, "time_entry_created");
     res.status(201).json({ success: true, data: populated });
   } catch (error) {
     next(error);
@@ -88,7 +90,9 @@ export const pauseTimer = async (req, res, next) => {
     entry.pausedAt = new Date();
     await entry.save();
 
-    res.json({ success: true, data: entry });
+    const populated = await TimeEntry.findById(entry._id).populate("task", "title status priority");
+    emitTimeEntryEvent(req.user.id, populated, "time_entry_updated");
+    res.json({ success: true, data: populated });
   } catch (error) {
     next(error);
   }
@@ -110,7 +114,9 @@ export const resumeTimer = async (req, res, next) => {
     entry.pausedAt = null;
     await entry.save();
 
-    res.json({ success: true, data: entry });
+    const populated = await TimeEntry.findById(entry._id).populate("task", "title status priority");
+    emitTimeEntryEvent(req.user.id, populated, "time_entry_updated");
+    res.json({ success: true, data: populated });
   } catch (error) {
     next(error);
   }
@@ -133,6 +139,7 @@ export const stopTimer = async (req, res, next) => {
 
     await updateTaskLoggedTime(entry.task);
     const populated = await TimeEntry.findById(entry._id).populate("task", "title status priority");
+    emitTimeEntryEvent(req.user.id, populated, "time_entry_updated");
     res.json({ success: true, data: populated });
   } catch (error) {
     next(error);
@@ -167,6 +174,7 @@ export const createManualEntry = async (req, res, next) => {
 
     await updateTaskLoggedTime(taskId);
     const populated = await TimeEntry.findById(entry._id).populate("task", "title status priority");
+    emitTimeEntryEvent(req.user.id, populated, "time_entry_created");
     res.status(201).json({ success: true, data: populated });
   } catch (error) {
     next(error);
@@ -182,6 +190,7 @@ export const deleteTimeEntry = async (req, res, next) => {
       throw error;
     }
     await updateTaskLoggedTime(entry.task);
+    emitTimeEntryEvent(req.user.id, entry, "time_entry_deleted");
     res.json({ success: true, message: "Time entry deleted" });
   } catch (error) {
     next(error);

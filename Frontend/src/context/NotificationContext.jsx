@@ -32,8 +32,8 @@ export const NotificationProvider = ({ children }) => {
       ]);
       setNotifications(notifRes.data || []);
       setUnreadCount(countRes.data?.count || 0);
-    } catch {
-      // silent fail
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
     } finally {
       setLoading(false);
     }
@@ -43,15 +43,21 @@ export const NotificationProvider = ({ children }) => {
     loadNotifications();
   }, [loadNotifications]);
 
+  // Handle incoming live websocket notifications safely
   useEffect(() => {
-    if (!user || !isV2) return;
+    if (!user || !isV2 || !subscribe) return;
 
     const unsub = subscribe("notification", (notification) => {
-      setNotifications((prev) => [notification, ...prev].slice(0, 100));
+      setNotifications((prev) => {
+        // Prevent duplicate appending
+        if (prev.some((n) => n._id === notification._id)) return prev;
+        return [notification, ...prev].slice(0, 100);
+      });
       setUnreadCount((c) => c + 1);
+      
       addToast(notification.title, notification.type?.includes("overdue") ? "error" : "info");
 
-      if (Notification.permission === "granted") {
+      if ("Notification" in window && Notification.permission === "granted") {
         new Notification(notification.title, {
           body: notification.message,
           icon: "/vite.svg",
@@ -64,7 +70,11 @@ export const NotificationProvider = ({ children }) => {
 
   const requestPushPermission = async () => {
     if ("Notification" in window && Notification.permission === "default") {
-      await Notification.requestPermission();
+      try {
+        await Notification.requestPermission();
+      } catch (err) {
+        console.warn("Notification permission request blocked:", err);
+      }
     }
   };
 
@@ -73,22 +83,40 @@ export const NotificationProvider = ({ children }) => {
   }, [user]);
 
   const markRead = async (id) => {
-    await markNotificationRead(id);
-    setNotifications((prev) =>
-      prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-    );
-    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      // Optimistic updates for snappy response times
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+      await markNotificationRead(id);
+    } catch (err) {
+      // Revert states on API error
+      loadNotifications();
+    }
   };
 
   const markAllRead = async () => {
-    await markAllNotificationsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setUnreadCount(0);
+    try {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      await markAllNotificationsRead();
+    } catch (err) {
+      loadNotifications();
+    }
   };
 
   const removeNotification = async (id) => {
-    await deleteNotification(id);
-    setNotifications((prev) => prev.filter((n) => n._id !== id));
+    try {
+      const target = notifications.find((n) => n._id === id);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      if (target && !target.isRead) {
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+      await deleteNotification(id);
+    } catch (err) {
+      loadNotifications();
+    }
   };
 
   return (

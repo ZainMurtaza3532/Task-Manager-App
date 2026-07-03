@@ -7,13 +7,16 @@ export const getNotifications = async (req, res, next) => {
     if (unreadOnly === "true") filter.isRead = false;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Optimized with .lean() for faster, read-only performance
     const [notifications, total, unreadCount] = await Promise.all([
       Notification.find(filter)
         .populate("sender", "name email avatar")
         .populate("task", "title status priority")
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(parseInt(limit))
+        .lean(), 
       Notification.countDocuments(filter),
       Notification.countDocuments({ recipient: req.user.id, isRead: false }),
     ]);
@@ -34,14 +37,13 @@ export const getNotifications = async (req, res, next) => {
 export const markAsRead = async (req, res, next) => {
   try {
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, recipient: req.user.id },
+      { _id: req.params.id, recipient: req.user.id, isRead: false }, // Only update if unread
       { isRead: true, readAt: new Date() },
       { new: true }
-    );
+    ).lean();
+
     if (!notification) {
-      const error = new Error("Notification not found");
-      error.statusCode = 404;
-      throw error;
+      return res.status(404).json({ success: false, message: "Notification not found or already read" });
     }
     res.json({ success: true, data: notification });
   } catch (error) {
@@ -53,7 +55,7 @@ export const markAllAsRead = async (req, res, next) => {
   try {
     await Notification.updateMany(
       { recipient: req.user.id, isRead: false },
-      { isRead: true, readAt: new Date() }
+      { $set: { isRead: true, readAt: new Date() } }
     );
     res.json({ success: true, message: "All notifications marked as read" });
   } catch (error) {
@@ -68,9 +70,7 @@ export const deleteNotification = async (req, res, next) => {
       recipient: req.user.id,
     });
     if (!notification) {
-      const error = new Error("Notification not found");
-      error.statusCode = 404;
-      throw error;
+      return res.status(404).json({ success: false, message: "Notification not found" });
     }
     res.json({ success: true, message: "Notification deleted" });
   } catch (error) {

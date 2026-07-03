@@ -68,3 +68,13 @@ export const emitChatMessage = (teamId, message) => {
     io.to(`team:${teamId}`).emit("chat_message", message);
   }
 };
+
+export const emitTimeEntryEvent = (userId, entry, eventType = "time_entry_updated") => {
+  const io = getIO();
+  if (!io || !userId) return;
+
+  io.to(`user:${userId}`).emit(eventType, {
+    type: eventType,
+    entry,
+  });
+};

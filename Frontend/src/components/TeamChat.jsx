@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Trash2 } from "lucide-react";
+import { Send } from "lucide-react";
 import { fetchChatMessages, sendChatMessage } from "../services/api";
 import { useSocket } from "../context/SocketContext";
-import { joinTeam } from "../services/socket";
+import { joinTeam, leaveTeam } from "../services/socket";
 import { formatRelativeTime } from "../utils/helpers";
 import { useAuth } from "../context/AuthContext";
 
@@ -16,6 +16,7 @@ const TeamChat = ({ teamId }) => {
 
   useEffect(() => {
     if (!teamId) return;
+
     joinTeam(teamId);
     setLoading(true);
     fetchChatMessages(teamId)
@@ -28,7 +29,10 @@ const TeamChat = ({ teamId }) => {
       }
     });
 
-    return () => unsub;
+    return () => {
+      unsub();
+      leaveTeam(teamId);
+    };
   }, [teamId, subscribe]);
 
   useEffect(() => {

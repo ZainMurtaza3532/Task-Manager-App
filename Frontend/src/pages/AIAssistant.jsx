@@ -68,12 +68,12 @@ const AIAssistant = () => {
     const text = chatInput.trim();
     if (!text) return;
     const userMsg = { role: "user", content: text };
-    const historyBefore = [...messages, userMsg];
-    setMessages(historyBefore);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setChatInput("");
     setLoading(true);
     try {
-      const res = await aiChat(text, messages);
+      const res = await aiChat(text, updatedMessages);
       setMessages((prev) => [...prev, { role: "assistant", content: res.data.reply, source: res.data.source }]);
     } catch (err) {
       setMessages((prev) => prev.slice(0, -1));

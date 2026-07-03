@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import * as api from "../services/api";
+import { useSocket } from "./SocketContext";
 import { useToast } from "./ToastContext";
 
 const TaskContext = createContext();
@@ -34,6 +35,7 @@ export const TaskProvider = ({ children }) => {
   });
 
   const { addToast } = useToast();
+  const { subscribe } = useSocket();
 
   const clearFilters = useCallback(() => {
     setFilters({
@@ -67,6 +69,15 @@ export const TaskProvider = ({ children }) => {
       console.error("Failed to fetch stats", error);
     }
   }, []);
+
+  useEffect(() => {
+    const refreshTasks = () => {
+      fetchAllTasks();
+      fetchStats();
+    };
+    const unsubTask = subscribe("task_update", refreshTasks);
+    return () => unsubTask();
+  }, [fetchAllTasks, fetchStats, subscribe]);
 
   const fetchAllTrashedTasks = useCallback(async () => {
     setLoading(true);

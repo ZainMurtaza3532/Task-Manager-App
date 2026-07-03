@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSocket } from "../context/SocketContext";
 import {
   fetchRunningTimer,
   startTimer,
@@ -29,9 +30,30 @@ export const useTimer = () => {
     }
   }, []);
 
+  const { subscribe } = useSocket();
+
   useEffect(() => {
     loadRunning();
   }, [loadRunning]);
+
+  useEffect(() => {
+    const unsub1 = subscribe("time_entry_created", (payload) => {
+      if (payload?.entry) setEntry(payload.entry);
+    });
+    const unsub2 = subscribe("time_entry_updated", (payload) => {
+      if (payload?.entry) setEntry(payload.entry);
+    });
+    const unsub3 = subscribe("time_entry_deleted", (payload) => {
+      if (payload?.entry?._id === entry?._id) {
+        setEntry(null);
+      }
+    });
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+    };
+  }, [subscribe, entry?._id]);
 
   useEffect(() => {
     if (entry?.isRunning && !entry?.isPaused) {

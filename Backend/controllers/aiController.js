@@ -16,16 +16,16 @@ const getOpenAI = () => {
   return new OpenAI({ apiKey: key });
 };
 
-const chatCompletion = async (messages, maxTokens = 1000) => {
+const chatCompletion = async (messages, maxTokens = 1200) => {
   const openai = getOpenAI();
   if (!openai) return null;
 
   try {
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL || "gpt-4",
       messages,
       max_tokens: maxTokens,
-      temperature: 0.7,
+      temperature: 0.75,
     });
     return response.choices[0]?.message?.content || "";
   } catch (error) {
@@ -219,7 +219,7 @@ export const chatWithAI = async (req, res, next) => {
     const messages = [
       {
         role: "system",
-        content: `You are TaskFlow Pro AI Assistant. User's open tasks: ${JSON.stringify(tasks)}. Help with task planning. Be concise.`,
+        content: `You are TaskFlow Pro AI Assistant. You help users with task planning, prioritization, productivity, and project breakdown. User's open tasks: ${JSON.stringify(tasks)}. Provide thoughtful, detailed, and actionable advice. When possible, explain why recommendations make sense, describe the next steps, and mention any risks or follow-up actions. If the user question is vague, ask a clarifying question.`,
       },
       ...history.slice(-10).map((h) => ({ role: h.role, content: h.content })),
       { role: "user", content: message },

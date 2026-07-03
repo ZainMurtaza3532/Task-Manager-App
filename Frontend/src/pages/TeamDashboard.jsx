@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Users, CheckSquare, Activity, MessageSquare } from "lucide-react";
 import { fetchTeam } from "../services/api";
-import { joinTeam } from "../services/socket";
+import { joinTeam, leaveTeam } from "../services/socket";
+import { useSocket } from "../context/SocketContext";
 import ActivityFeed from "../components/ActivityFeed";
 import TeamChat from "../components/TeamChat";
 import TaskCard from "../components/TaskCard";
@@ -10,6 +11,7 @@ import { ROLES } from "../utils/constants";
 
 const TeamDashboard = () => {
   const { id } = useParams();
+  const { subscribe } = useSocket();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("tasks");
@@ -21,7 +23,40 @@ const TeamDashboard = () => {
     fetchTeam(id)
       .then((res) => setData(res.data))
       .finally(() => setLoading(false));
-  }, [id]);
+
+    const refreshTeam = (payload) => {
+      if (!payload?.task) return;
+      setData((prev) => {
+        if (!prev) return prev;
+        const updatedTask = payload.task;
+        const existingTask = prev.tasks.find((task) => task._id === updatedTask._id);
+        const updatedTasks = existingTask
+          ? prev.tasks.map((task) => (task._id === updatedTask._id ? updatedTask : task))
+          : [updatedTask, ...prev.tasks];
+        const updatedStats = {
+          ...prev.stats,
+          total: updatedTasks.length,
+          pending: updatedTasks.filter((t) => t.status === "pending").length,
+          inProgress: updatedTasks.filter((t) => t.status === "in-progress").length,
+          completed: updatedTasks.filter((t) => t.status === "completed").length,
+        };
+        return { ...prev, tasks: updatedTasks, stats: updatedStats };
+      });
+    };
+
+    const addActivity = (activity) => {
+      setData((prev) => prev ? { ...prev, activities: [activity, ...prev.activities] } : prev);
+    };
+
+    const unsubTask = subscribe("task_update", refreshTeam);
+    const unsubActivity = subscribe("team_activity", addActivity);
+
+    return () => {
+      unsubTask();
+      unsubActivity();
+      leaveTeam(id);
+    };
+  }, [id, subscribe]);
 
   if (loading) return <div className="page"><p>Loading team...</p></div>;
   if (!data) return <div className="page"><p>Team not found</p></div>;
