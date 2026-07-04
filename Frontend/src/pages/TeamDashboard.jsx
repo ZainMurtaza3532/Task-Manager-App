@@ -1,28 +1,50 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { Users, CheckSquare, Activity, MessageSquare } from "lucide-react";
-import { fetchTeam } from "../services/api";
+import { Users, CheckSquare, Activity, MessageSquare, Plus, Trash2, X, ListPlus } from "lucide-react";
+import {
+  fetchTeam,
+  inviteTeamMember,
+  updateTeamMemberRole,
+  removeTeamMember,
+  updateTask,
+} from "../services/api";
 import { joinTeam, leaveTeam } from "../services/socket";
 import { useSocket } from "../context/SocketContext";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import ActivityFeed from "../components/ActivityFeed";
 import TeamChat from "../components/TeamChat";
 import TaskCard from "../components/TaskCard";
+import TeamTaskForm from "../components/TeamTaskForm";
 import { ROLES } from "../utils/constants";
 
 const TeamDashboard = () => {
   const { id } = useParams();
   const { subscribe } = useSocket();
+  const { user } = useAuth();
+  const { addToast } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("tasks");
+  const [showInvite, setShowInvite] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [inviteForm, setInviteForm] = useState({ email: "", role: "member" });
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadTeam = useCallback(() => {
+    if (!id) return;
+    setLoading(true);
+    fetchTeam(id)
+      .then((res) => setData(res.data))
+      .catch(() => addToast("Failed to load team", "error"))
+      .finally(() => setLoading(false));
+  }, [id, addToast]);
 
   useEffect(() => {
     if (!id) return;
     joinTeam(id);
-    setLoading(true);
-    fetchTeam(id)
-      .then((res) => setData(res.data))
-      .finally(() => setLoading(false));
+    loadTeam();
 
     const refreshTeam = (payload) => {
       if (!payload?.task) return;
@@ -45,7 +67,7 @@ const TeamDashboard = () => {
     };
 
     const addActivity = (activity) => {
-      setData((prev) => prev ? { ...prev, activities: [activity, ...prev.activities] } : prev);
+      setData((prev) => (prev ? { ...prev, activities: [activity, ...prev.activities] } : prev));
     };
 
     const unsubTask = subscribe("task_update", refreshTeam);
@@ -56,10 +78,85 @@ const TeamDashboard = () => {
       unsubActivity();
       leaveTeam(id);
     };
-  }, [id, subscribe]);
+  }, [id, subscribe, loadTeam]);
 
-  if (loading) return <div className="page"><p>Loading team...</p></div>;
-  if (!data) return <div className="page"><p>Team not found</p></div>;
+  const currentMember = data?.team?.members?.find(
+    (m) => (m.user?._id || m.user) === user?._id
+  );
+  const isAdmin = currentMember?.role === "admin";
+  const canManageTasks = ["admin", "manager", "member"].includes(currentMember?.role);
+
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteForm.email.trim()) return;
+    setSubmitting(true);
+    try {
+      await inviteTeamMember(id, inviteForm);
+      addToast("Member added successfully", "success");
+      setShowInvite(false);
+      setInviteForm({ email: "", role: "member" });
+      loadTeam();
+    } catch (err) {
+      addToast(err.response?.data?.message || "Invite failed", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRoleChange = async (memberId, role) => {
+    try {
+      await updateTeamMemberRole(id, memberId, role);
+      addToast("Role updated", "success");
+      loadTeam();
+    } catch (err) {
+      addToast(err.response?.data?.message || "Failed to update role", "error");
+    }
+  };
+
+  const handleRemoveMember = async (memberId, memberName) => {
+    if (!window.confirm(`Remove ${memberName} from this team?`)) return;
+    try {
+      await removeTeamMember(id, memberId);
+      addToast("Member removed", "success");
+      loadTeam();
+    } catch (err) {
+      addToast(err.response?.data?.message || "Failed to remove member", "error");
+    }
+  };
+
+  const handleComplete = async (task) => {
+    try {
+      await updateTask(task._id, { status: "completed" });
+      addToast("Task completed", "success");
+      loadTeam();
+    } catch {
+      addToast("Failed to update task", "error");
+    }
+  };
+
+  const closeTaskForm = () => {
+    setShowTaskForm(false);
+    setEditingTask(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="page team-dashboard">
+        <div className="loading-state">Loading team...</div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="page team-dashboard">
+        <div className="empty-state">
+          <Users size={48} />
+          <h3>Team not found</h3>
+        </div>
+      </div>
+    );
+  }
 
   const { team, tasks, activities, stats } = data;
 
@@ -67,10 +164,27 @@ const TeamDashboard = () => {
     <div className="page team-dashboard">
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ borderLeftColor: team.color, borderLeftWidth: "4px", borderLeftStyle: "solid", paddingLeft: "12px" }}>
+          <h1 className="page-title team-title-accent" style={{ borderLeftColor: team.color }}>
             {team.name}
           </h1>
-          <p className="page-subtitle">{team.description || "Team workspace"}</p>
+          <p className="page-subtitle">
+            {team.description || "Team workspace"}
+            {team.workspace?.name && (
+              <span className="team-workspace-tag"> • {team.workspace.name}</span>
+            )}
+          </p>
+        </div>
+        <div className="page-header-actions">
+          {canManageTasks && (
+            <button className="btn btn-primary" onClick={() => { setEditingTask(null); setShowTaskForm(true); }}>
+              <ListPlus size={16} /> Add Task
+            </button>
+          )}
+          {isAdmin && (
+            <button className="btn btn-secondary" onClick={() => setShowInvite(true)}>
+              <Plus size={16} /> Add Member
+            </button>
+          )}
         </div>
       </div>
 
@@ -98,29 +212,153 @@ const TeamDashboard = () => {
       <div className="team-tab-content">
         {tab === "tasks" && (
           <div className="tasks-grid">
-            {tasks.map((task) => <TaskCard key={task._id} task={task} />)}
-            {tasks.length === 0 && <p className="empty-text">No team tasks yet</p>}
+            {tasks.map((task) => (
+              <TaskCard
+                key={task._id}
+                task={task}
+                showAssignee
+                onEdit={canManageTasks ? (t) => { setEditingTask(t); setShowTaskForm(true); } : undefined}
+                onComplete={canManageTasks ? handleComplete : undefined}
+              />
+            ))}
+            {tasks.length === 0 && (
+              <div className="empty-state compact">
+                <CheckSquare size={40} />
+                <h3>No team tasks yet</h3>
+                <p>Create a task and assign it to a team member.</p>
+                {canManageTasks && (
+                  <button className="btn btn-primary" onClick={() => setShowTaskForm(true)}>
+                    <ListPlus size={16} /> Add First Task
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
         {tab === "activity" && <ActivityFeed activities={activities} />}
         {tab === "chat" && <TeamChat teamId={id} />}
         {tab === "members" && (
-          <div className="members-list">
-            {team.members?.map((m) => (
-              <div key={m.user?._id || m.user} className="member-row">
-                <div className="member-avatar lg">{m.user?.name?.charAt(0) || "?"}</div>
-                <div>
-                  <strong>{m.user?.name || "User"}</strong>
-                  <span>{m.user?.email}</span>
-                </div>
-                <span className="role-badge" style={{ color: ROLES[m.role]?.color }}>
-                  {ROLES[m.role]?.label || m.role}
-                </span>
-              </div>
-            ))}
+          <div className="members-panel">
+            <div className="members-list">
+              {team.members?.map((m) => {
+                const memberId = m.user?._id || m.user;
+                const isSelf = memberId === user?._id;
+                const assignedCount = tasks.filter(
+                  (t) => (t.assignee?._id || t.assignee) === memberId
+                ).length;
+                return (
+                  <div key={memberId} className="member-row">
+                    <div className="member-avatar lg">{m.user?.name?.charAt(0) || "?"}</div>
+                    <div className="member-info">
+                      <strong>
+                        {m.user?.name || "User"}
+                        {isSelf && <span className="member-you"> (you)</span>}
+                      </strong>
+                      <span>{m.user?.email}</span>
+                      <span className="member-task-count">{assignedCount} task{assignedCount !== 1 ? "s" : ""} assigned</span>
+                    </div>
+                    {isAdmin && !isSelf ? (
+                      <select
+                        className="role-select"
+                        value={m.role}
+                        onChange={(e) => handleRoleChange(memberId, e.target.value)}
+                      >
+                        {Object.entries(ROLES).map(([k, v]) => (
+                          <option key={k} value={k}>{v.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="role-badge" style={{ color: ROLES[m.role]?.color }}>
+                        {ROLES[m.role]?.label || m.role}
+                      </span>
+                    )}
+                    {isAdmin && !isSelf && (
+                      <button
+                        type="button"
+                        className="btn-icon danger"
+                        title="Remove member"
+                        onClick={() => handleRemoveMember(memberId, m.user?.name)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
+
+      {showTaskForm && (
+        <div className="modal-overlay" onClick={closeTaskForm}>
+          <div className="modal-dialog modal-dialog-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingTask ? "Edit Team Task" : "Create Team Task"}</h3>
+              <button type="button" className="modal-close" onClick={closeTaskForm}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <TeamTaskForm
+                teamId={id}
+                members={team.members || []}
+                initialData={editingTask}
+                onSuccess={() => { closeTaskForm(); loadTeam(); }}
+                onCancel={closeTaskForm}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInvite && (
+        <div className="modal-overlay" onClick={() => setShowInvite(false)}>
+          <form className="modal-dialog" onSubmit={handleInvite} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add Team Member</h3>
+              <button type="button" className="modal-close" onClick={() => setShowInvite(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-hint">
+                Enter the email of an existing TaskFlow user to add them to {team.name}.
+              </p>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  required
+                  type="email"
+                  placeholder="colleague@company.com"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  className="form-input"
+                  autoFocus
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Role</label>
+                <select
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  className="form-select"
+                >
+                  {Object.entries(ROLES).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowInvite(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? "Adding..." : "Add Member"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

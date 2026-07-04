@@ -3,6 +3,16 @@ import Team from "../models/Team.js";
 import { createNotification, emitTaskUpdate } from "../utils/notificationService.js";
 import { logActivity } from "./teamController.js";
 
+const canAccessTask = async (task, userId) => {
+  const uid = userId.toString();
+  if (task.user?.toString() === uid || task.assignee?.toString() === uid) return true;
+  if (task.team) {
+    const teamDoc = await Team.findById(task.team);
+    return teamDoc?.isMember(userId) ?? false;
+  }
+  return false;
+};
+
 const buildTaskFilter = (req) => {
   const { search, priority, status, category, sort, page = 1, limit = 50, team, workspace } = req.query;
 
@@ -134,14 +144,17 @@ export const getTrashedTasks = async (req, res, next) => {
 
 export const getTaskById = async (req, res, next) => {
   try {
-    const task = await Task.findOne({
-      _id: req.params.id,
-      $or: [{ user: req.user.id }, { assignee: req.user.id }],
-    })
+    const task = await Task.findById(req.params.id)
       .populate("assignee", "name email avatar")
       .populate("team", "name color");
 
-    if (!task) {
+    if (!task || task.isDeleted) {
+      const error = new Error("Task not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!(await canAccessTask(task, req.user.id))) {
       const error = new Error("Task not found");
       error.statusCode = 404;
       throw error;
@@ -176,13 +189,27 @@ export const createTask = async (req, res, next) => {
 
     if (team) {
       const teamDoc = await Team.findById(team);
-      if (teamDoc && teamDoc.isMember(req.user.id)) {
-        taskData.team = team;
-        taskData.workspace = teamDoc.workspace;
+      if (!teamDoc || !teamDoc.isMember(req.user.id)) {
+        const error = new Error("Not authorized to create tasks for this team");
+        error.statusCode = 403;
+        throw error;
       }
+      taskData.team = team;
+      taskData.workspace = teamDoc.workspace;
     }
-    if (workspace) taskData.workspace = workspace;
-    if (assignee) taskData.assignee = assignee;
+    if (workspace && !taskData.workspace) taskData.workspace = workspace;
+
+    if (assignee) {
+      if (taskData.team) {
+        const teamDoc = await Team.findById(taskData.team);
+        if (!teamDoc?.isMember(assignee)) {
+          const error = new Error("Assignee must be a member of this team");
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+      taskData.assignee = assignee;
+    }
 
     const task = await Task.create(taskData);
     const populated = await Task.findById(task._id)
@@ -219,12 +246,15 @@ export const createTask = async (req, res, next) => {
 
 export const updateTask = async (req, res, next) => {
   try {
-    const task = await Task.findOne({
-      _id: req.params.id,
-      $or: [{ user: req.user.id }, { assignee: req.user.id }],
-    });
+    const task = await Task.findById(req.params.id);
 
-    if (!task) {
+    if (!task || task.isDeleted) {
+      const error = new Error("Task not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!(await canAccessTask(task, req.user.id))) {
       const error = new Error("Task not found");
       error.statusCode = 404;
       throw error;
@@ -232,6 +262,15 @@ export const updateTask = async (req, res, next) => {
 
     const previousAssignee = task.assignee?.toString();
     const previousStatus = task.status;
+
+    if (req.body.assignee && task.team) {
+      const teamDoc = await Team.findById(task.team);
+      if (!teamDoc?.isMember(req.body.assignee)) {
+        const error = new Error("Assignee must be a member of this team");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
 
     Object.assign(task, req.body);
     await task.save();

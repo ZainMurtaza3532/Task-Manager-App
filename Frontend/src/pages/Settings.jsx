@@ -1,214 +1,265 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import { User, Lock, Moon, Sun, Save } from 'lucide-react';
-import { useToast } from '../context/ToastContext';
+import React, { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useTheme, ACCENT_PRESETS } from "../context/ThemeContext";
+import { User, Lock, Palette, Save, Sun, Moon, Monitor } from "lucide-react";
+import { useToast } from "../context/ToastContext";
+
+const THEME_OPTIONS = [
+  { id: "light", label: "Light", icon: Sun, desc: "Bright and clean" },
+  { id: "dark", label: "Dark", icon: Moon, desc: "Easy on the eyes" },
+  { id: "system", label: "System", icon: Monitor, desc: "Match your device" },
+];
 
 const Settings = () => {
-    const { user, updateProfile, updatePassword } = useAuth();
-    const { theme, toggleTheme } = useTheme();
-    const { addToast } = useToast();
+  const { user, updateProfile, updatePassword } = useAuth();
+  const { themeMode, resolvedTheme, accentKey, setThemeMode, setAccent } = useTheme();
+  const { addToast } = useToast();
 
-    const [profileData, setProfileData] = useState({
-        name: user?.name || '',
-        email: user?.email || '',
+  const [profileData, setProfileData] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [isProfileUpdating, setIsProfileUpdating] = useState(false);
+  const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
+
+  const handleProfileChange = (e) => {
+    setProfileData({ ...profileData, [e.target.name]: e.target.value });
+  };
+
+  const handlePasswordChange = (e) => {
+    setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setIsProfileUpdating(true);
+    await updateProfile(profileData);
+    setIsProfileUpdating(false);
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      return addToast("New passwords do not match", "error");
+    }
+    if (passwordData.newPassword.length < 6) {
+      return addToast("Password must be at least 6 characters long", "error");
+    }
+
+    setIsPasswordUpdating(true);
+    const success = await updatePassword({
+      currentPassword: passwordData.currentPassword,
+      newPassword: passwordData.newPassword,
     });
 
-    const [passwordData, setPasswordData] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-    });
+    if (success) {
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    }
+    setIsPasswordUpdating(false);
+  };
 
-    const [isProfileUpdating, setIsProfileUpdating] = useState(false);
-    const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
+  const tabs = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "security", label: "Security", icon: Lock },
+    { id: "appearance", label: "Appearance", icon: Palette },
+  ];
 
-    const handleProfileChange = (e) => {
-        setProfileData({ ...profileData, [e.target.name]: e.target.value });
-    };
-
-    const handlePasswordChange = (e) => {
-        setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
-    };
-
-    const handleProfileSubmit = async (e) => {
-        e.preventDefault();
-        setIsProfileUpdating(true);
-        await updateProfile(profileData);
-        setIsProfileUpdating(false);
-    };
-
-    const handlePasswordSubmit = async (e) => {
-        e.preventDefault();
-        if (passwordData.newPassword !== passwordData.confirmPassword) {
-            return addToast('New passwords do not match', 'error');
-        }
-        if (passwordData.newPassword.length < 6) {
-            return addToast('Password must be at least 6 characters long', 'error');
-        }
-        
-        setIsPasswordUpdating(true);
-        const success = await updatePassword({
-            currentPassword: passwordData.currentPassword,
-            newPassword: passwordData.newPassword
-        });
-        
-        if (success) {
-            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        }
-        setIsPasswordUpdating(false);
-    };
-
-    return (
-        <div className="settings-page" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-            <div className="page-header" style={{ marginBottom: '32px' }}>
-                <h1 className="page-title">Settings</h1>
-                <p className="page-subtitle">Manage your account preferences and settings.</p>
-            </div>
-
-            <div style={{ display: 'grid', gap: '32px' }}>
-                {/* Profile Settings */}
-                <div className="card" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                        <User style={{ color: 'var(--accent)' }} size={24} />
-                        <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Profile Information</h2>
-                    </div>
-                    <form onSubmit={handleProfileSubmit}>
-                        <div className="form-group" style={{ marginBottom: '16px' }}>
-                            <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Full Name</label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={profileData.name}
-                                onChange={handleProfileChange}
-                                className="form-input"
-                                placeholder="Enter your full name"
-                                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
-                                required
-                            />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: '20px' }}>
-                            <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Email Address</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={profileData.email}
-                                onChange={handleProfileChange}
-                                className="form-input"
-                                placeholder="Enter your email address"
-                                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
-                                required
-                            />
-                        </div>
-                        <button 
-                            type="submit" 
-                            disabled={isProfileUpdating}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '500', cursor: isProfileUpdating ? 'not-allowed' : 'pointer', opacity: isProfileUpdating ? 0.7 : 1 }}
-                        >
-                            <Save size={18} />
-                            {isProfileUpdating ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </form>
-                </div>
-
-                {/* Password Settings */}
-                <div className="card" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                        <Lock style={{ color: 'var(--accent)' }} size={24} />
-                        <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Change Password</h2>
-                    </div>
-                    <form onSubmit={handlePasswordSubmit}>
-                        <div className="form-group" style={{ marginBottom: '16px' }}>
-                            <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Current Password</label>
-                            <input
-                                type="password"
-                                name="currentPassword"
-                                value={passwordData.currentPassword}
-                                onChange={handlePasswordChange}
-                                className="form-input"
-                                placeholder="Enter current password"
-                                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
-                                required
-                            />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: '16px' }}>
-                            <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>New Password</label>
-                            <input
-                                type="password"
-                                name="newPassword"
-                                value={passwordData.newPassword}
-                                onChange={handlePasswordChange}
-                                className="form-input"
-                                placeholder="Enter new password"
-                                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
-                                required
-                            />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: '20px' }}>
-                            <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Confirm New Password</label>
-                            <input
-                                type="password"
-                                name="confirmPassword"
-                                value={passwordData.confirmPassword}
-                                onChange={handlePasswordChange}
-                                className="form-input"
-                                placeholder="Confirm new password"
-                                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
-                                required
-                            />
-                        </div>
-                        <button 
-                            type="submit" 
-                            disabled={isPasswordUpdating}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '500', cursor: isPasswordUpdating ? 'not-allowed' : 'pointer', opacity: isPasswordUpdating ? 0.7 : 1 }}
-                        >
-                            <Lock size={18} />
-                            {isPasswordUpdating ? 'Updating...' : 'Update Password'}
-                        </button>
-                    </form>
-                </div>
-
-                {/* Preferences */}
-                <div className="card" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                        {theme === 'dark' ? <Moon style={{ color: 'var(--accent)' }} size={24} /> : <Sun style={{ color: 'var(--accent)' }} size={24} />}
-                        <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Preferences</h2>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                        <div>
-                            <div style={{ fontWeight: '500', marginBottom: '4px' }}>Dark Mode</div>
-                            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Toggle between light and dark theme</div>
-                        </div>
-                        <button 
-                            onClick={toggleTheme}
-                            style={{ 
-                                width: '48px', 
-                                height: '24px', 
-                                borderRadius: '12px', 
-                                background: theme === 'dark' ? 'var(--accent)' : 'var(--border-color)', 
-                                border: 'none', 
-                                position: 'relative', 
-                                cursor: 'pointer',
-                                transition: 'background 0.3s'
-                            }}
-                        >
-                            <div style={{ 
-                                width: '20px', 
-                                height: '20px', 
-                                borderRadius: '50%', 
-                                background: 'white', 
-                                position: 'absolute', 
-                                top: '2px', 
-                                left: theme === 'dark' ? '26px' : '2px',
-                                transition: 'left 0.3s',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                            }} />
-                        </button>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="settings-page">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Settings</h1>
+          <p className="page-subtitle">Manage your account, security, and appearance preferences.</p>
         </div>
-    );
+      </div>
+
+      <div className="settings-layout">
+        <nav className="settings-tabs">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={`settings-tab ${activeTab === id ? "active" : ""}`}
+              onClick={() => setActiveTab(id)}
+            >
+              <Icon size={18} />
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="settings-content">
+          {activeTab === "profile" && (
+            <div className="card settings-card">
+              <h2 className="settings-card-title">
+                <User size={20} /> Profile Information
+              </h2>
+              <form onSubmit={handleProfileSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={profileData.name}
+                    onChange={handleProfileChange}
+                    className="form-input"
+                    placeholder="Enter your full name"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={profileData.email}
+                    onChange={handleProfileChange}
+                    className="form-input"
+                    placeholder="Enter your email address"
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={isProfileUpdating}>
+                  <Save size={18} />
+                  {isProfileUpdating ? "Saving..." : "Save Changes"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activeTab === "security" && (
+            <div className="card settings-card">
+              <h2 className="settings-card-title">
+                <Lock size={20} /> Change Password
+              </h2>
+              <form onSubmit={handlePasswordSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Current Password</label>
+                  <input
+                    type="password"
+                    name="currentPassword"
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordChange}
+                    className="form-input"
+                    placeholder="Enter current password"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">New Password</label>
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    className="form-input"
+                    placeholder="Enter new password"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm New Password</label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    className="form-input"
+                    placeholder="Confirm new password"
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={isPasswordUpdating}>
+                  <Lock size={18} />
+                  {isPasswordUpdating ? "Updating..." : "Update Password"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activeTab === "appearance" && (
+            <div className="settings-appearance">
+              <div className="card settings-card">
+                <h2 className="settings-card-title">
+                  <Palette size={20} /> Theme Mode
+                </h2>
+                <p className="settings-card-desc">
+                  Choose how TaskFlow looks. System mode follows your device settings.
+                </p>
+                <div className="theme-mode-grid">
+                  {THEME_OPTIONS.map(({ id, label, icon: Icon, desc }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`theme-mode-option ${themeMode === id ? "active" : ""}`}
+                      onClick={() => setThemeMode(id)}
+                    >
+                      <div className="theme-mode-icon">
+                        <Icon size={22} />
+                      </div>
+                      <div className="theme-mode-info">
+                        <span className="theme-mode-label">{label}</span>
+                        <span className="theme-mode-desc">{desc}</span>
+                      </div>
+                      {themeMode === id && <span className="theme-mode-check">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card settings-card">
+                <h2 className="settings-card-title">Accent Color</h2>
+                <p className="settings-card-desc">
+                  Pick a color that personalizes buttons, links, and highlights across the app.
+                </p>
+                <div className="accent-color-grid">
+                  {Object.entries(ACCENT_PRESETS).map(([key, { label, color }]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`accent-color-option ${accentKey === key ? "active" : ""}`}
+                      onClick={() => setAccent(key)}
+                      title={label}
+                    >
+                      <span className="accent-swatch" style={{ background: color }} />
+                      <span className="accent-label">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card settings-card theme-preview-card">
+                <h2 className="settings-card-title">Live Preview</h2>
+                <div className="theme-preview" data-theme={resolvedTheme}>
+                  <div className="theme-preview-sidebar" />
+                  <div className="theme-preview-main">
+                    <div className="theme-preview-header" />
+                    <div className="theme-preview-card">
+                      <div className="theme-preview-line long" />
+                      <div className="theme-preview-line short" />
+                      <button type="button" className="theme-preview-btn">Button</button>
+                    </div>
+                  </div>
+                </div>
+                <p className="settings-card-desc theme-preview-note">
+                  Currently using <strong>{themeMode === "system" ? "System" : themeMode === "dark" ? "Dark" : "Light"}</strong> mode
+                  {themeMode === "system" && ` (${resolvedTheme})`} with <strong>{ACCENT_PRESETS[accentKey]?.label}</strong> accent.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Settings;

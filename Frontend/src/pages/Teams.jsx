@@ -1,42 +1,54 @@
 import React, { useState } from "react";
-import { Users, Plus, Link2, Copy, Check } from "lucide-react";
+import { Users, Plus, Link2, Check, X, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { createTeam, inviteTeamMember, regenerateTeamInvite } from "../services/api";
+import { inviteTeamMember, regenerateTeamInvite } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import { ROLES } from "../utils/constants";
 
 const Teams = () => {
-  const { teams, currentWorkspace, refreshTeams } = useWorkspace();
+  const { teams, currentWorkspace, refreshTeams, addWorkspace, workspaces, loading } = useWorkspace();
   const { addToast } = useToast();
-  const [showCreate, setShowCreate] = useState(false);
   const [showInvite, setShowInvite] = useState(null);
-  const [form, setForm] = useState({ name: "", description: "", color: "#6366f1" });
+  const [showWorkspaceCreate, setShowWorkspaceCreate] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState("");
   const [inviteForm, setInviteForm] = useState({ email: "", role: "member" });
   const [copied, setCopied] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleCreate = async (e) => {
+  const handleCreateWorkspace = async (e) => {
     e.preventDefault();
-    if (!currentWorkspace) { addToast("Create a workspace first", "error"); return; }
+    if (!workspaceName.trim()) return;
+    setSubmitting(true);
     try {
-      await createTeam({ ...form, workspaceId: currentWorkspace._id });
-      addToast("Team created", "success");
-      setShowCreate(false);
-      setForm({ name: "", description: "", color: "#6366f1" });
-      refreshTeams();
+      await addWorkspace({ name: workspaceName.trim() });
+      addToast("Workspace created", "success");
+      setShowWorkspaceCreate(false);
+      setWorkspaceName("");
     } catch (err) {
-      addToast(err.response?.data?.message || "Failed to create team", "error");
+      addToast(err.response?.data?.message || "Failed to create workspace", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleInvite = async (teamId) => {
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteForm.email.trim()) {
+      addToast("Enter an email address", "error");
+      return;
+    }
+    setSubmitting(true);
     try {
-      await inviteTeamMember(teamId, inviteForm);
-      addToast("Member invited", "success");
+      await inviteTeamMember(showInvite, inviteForm);
+      addToast("Member invited successfully", "success");
       setShowInvite(null);
       setInviteForm({ email: "", role: "member" });
+      refreshTeams();
     } catch (err) {
       addToast(err.response?.data?.message || "Invite failed", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -57,31 +69,106 @@ const Teams = () => {
     }
   };
 
+  if (!loading && workspaces.length === 0) {
+    return (
+      <div className="page teams-page">
+        <div className="teams-empty-workspace card">
+          <Building2 size={48} />
+          <h2>Create your workspace</h2>
+          <p>A workspace is required to view teams and invite members.</p>
+          {showWorkspaceCreate ? (
+            <form className="teams-workspace-form" onSubmit={handleCreateWorkspace}>
+              <input
+                required
+                placeholder="Workspace name (e.g. My Company)"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                autoFocus
+              />
+              <div className="form-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowWorkspaceCreate(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? "Creating..." : "Create Workspace"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button className="btn btn-primary btn-lg" onClick={() => setShowWorkspaceCreate(true)}>
+              <Plus size={18} /> Create Workspace
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page teams-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title"><Users size={28} /> Teams</h1>
+          <h1 className="page-title">
+            <Users size={28} /> Teams
+          </h1>
           <p className="page-subtitle">
-            {currentWorkspace ? `Teams in ${currentWorkspace.name}` : "Collaborate with your team"}
+            {currentWorkspace
+              ? `Teams in ${currentWorkspace.name} — invite members and collaborate.`
+              : "Collaborate with your team"}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <Plus size={16} /> Create Team
-        </button>
       </div>
 
-      {showCreate && (
-        <form className="modal-form" onSubmit={handleCreate}>
-          <h3>Create Team</h3>
-          <input required placeholder="Team name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Create</button>
-          </div>
-        </form>
+      {showInvite && (
+        <div className="modal-overlay" onClick={() => setShowInvite(null)}>
+          <form className="modal-dialog" onSubmit={handleInvite} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Invite Team Member</h3>
+              <button type="button" className="modal-close" onClick={() => setShowInvite(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-hint">
+                The user must already have a TaskFlow account. They will be added to this team immediately.
+              </p>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  required
+                  type="email"
+                  placeholder="colleague@company.com"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  className="form-input"
+                  autoFocus
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Role</label>
+                <select
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  className="form-select"
+                >
+                  {Object.entries(ROLES).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowInvite(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? "Sending..." : "Send Invite"}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       <div className="teams-grid">
@@ -91,40 +178,35 @@ const Teams = () => {
               <h3>{team.name}</h3>
               <span className="team-member-count">{team.members?.length || 0} members</span>
             </div>
-            <p>{team.description || "No description"}</p>
+            <p className="team-card-desc">{team.description || "No description"}</p>
             <div className="team-members-preview">
               {team.members?.slice(0, 5).map((m) => (
                 <span key={m.user?._id || m.user} className="member-avatar" title={m.user?.name}>
                   {m.user?.name?.charAt(0) || "?"}
                 </span>
               ))}
+              {(team.members?.length || 0) > 5 && (
+                <span className="member-avatar more">+{team.members.length - 5}</span>
+              )}
             </div>
             <div className="team-card-actions">
-              <Link to={`/teams/${team._id}`} className="btn btn-primary btn-sm">Open Dashboard</Link>
+              <Link to={`/teams/${team._id}`} className="btn btn-primary btn-sm">
+                Open Dashboard
+              </Link>
               <button className="btn btn-secondary btn-sm" onClick={() => setShowInvite(team._id)}>
-                <Plus size={14} /> Invite
+                <Plus size={14} /> Add Member
               </button>
               <button className="btn btn-secondary btn-sm" onClick={() => copyInviteLink(team)}>
-                {copied === team._id ? <Check size={14} /> : <Link2 size={14} />} Link
+                {copied === team._id ? <Check size={14} /> : <Link2 size={14} />} Copy Link
               </button>
             </div>
-
-            {showInvite === team._id && (
-              <div className="invite-form">
-                <input placeholder="Email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} />
-                <select value={inviteForm.role} onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}>
-                  {Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
-                <button className="btn btn-primary btn-sm" onClick={() => handleInvite(team._id)}>Send Invite</button>
-              </div>
-            )}
           </div>
         ))}
-        {teams.length === 0 && (
+        {teams.length === 0 && !loading && (
           <div className="empty-state">
             <Users size={48} />
-            <h3>No teams yet</h3>
-            <p>Create a team to start collaborating</p>
+            <h3>No teams available</h3>
+            <p>You are not part of any teams yet. Ask your admin for an invite link to join.</p>
           </div>
         )}
       </div>

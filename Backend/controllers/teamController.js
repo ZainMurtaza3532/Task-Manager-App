@@ -76,7 +76,11 @@ export const getTeam = async (req, res, next) => {
   try {
     const team = await Team.findById(req.params.id)
       .populate("members.user", "name email avatar")
-      .populate("workspace", "name owner members")
+      .populate({
+        path: "workspace",
+        select: "name owner members",
+        populate: { path: "members.user", select: "name email avatar" },
+      })
       .populate("createdBy", "name email");
 
     if (!team || !team.isActive) {
@@ -100,6 +104,7 @@ export const getTeam = async (req, res, next) => {
       Task.find({ team: team._id, isDeleted: false })
         .populate("assignee", "name email avatar")
         .populate("user", "name email")
+        .populate("team", "name color")
         .sort({ updatedAt: -1 })
         .limit(50),
       Activity.find({ team: team._id })

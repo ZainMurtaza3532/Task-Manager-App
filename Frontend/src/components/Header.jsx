@@ -9,7 +9,7 @@ import WorkspaceSwitcher from './WorkspaceSwitcher';
 import TimerWidget from './TimerWidget';
 
 const Header = ({ toggleSidebar }) => {
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const { searchQuery, setSearchQuery } = useTasks();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -52,7 +52,7 @@ const Header = ({ toggleSidebar }) => {
         <TimerWidget compact />
         <NotificationCenter />
         <button className="header-btn" onClick={toggleTheme} title="Toggle Theme">
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
         {user && (

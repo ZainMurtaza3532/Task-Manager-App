@@ -1,66 +1,222 @@
-import React, { useState, useEffect } from 'react';
-import { useTasks } from '../context/TaskContext';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useTasks } from "../context/TaskContext";
+import { useWorkspace } from "../context/WorkspaceContext";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  User,
+  Users,
+  Plus,
+  FileText,
+  CalendarDays,
+  ListChecks,
+  Trash2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+} from "lucide-react";
+import { CATEGORIES } from "../utils/constants";
 
-const TaskForm = ({ initialData = null, onSuccess = null }) => {
+const PRIORITIES = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
+const DUE_DATE_SHORTCUTS = [
+  { label: "Today", days: 0 },
+  { label: "Tomorrow", days: 1 },
+  { label: "Next week", days: 7 },
+];
+
+const INITIAL_FORM = {
+  title: "",
+  description: "",
+  priority: "medium",
+  status: "pending",
+  dueDate: "",
+  category: "General",
+  subTasks: [],
+  team: "",
+  assignee: "",
+};
+
+const TaskForm = ({
+  initialData = null,
+  onSuccess = null,
+  variant = "modal",
+  onFormChange = null,
+}) => {
   const { addTask, editTask } = useTasks();
+  const { teams, currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'medium',
-    status: 'pending',
-    dueDate: '',
-    category: '',
-    subTasks: []
+  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [expandedOptional, setExpandedOptional] = useState({
+    team: false,
+    subtasks: false,
   });
+
+  const isPage = variant === "page";
+  const isEdit = !!(initialData && initialData._id);
 
   useEffect(() => {
     if (initialData) {
       setFormData({
-        title: initialData.title || '',
-        description: initialData.description || '',
-        priority: initialData.priority || 'medium',
-        status: initialData.status || 'pending',
-        dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
-        category: initialData.category || '',
-        subTasks: initialData.subTasks || []
+        title: initialData.title || "",
+        description: initialData.description || "",
+        priority: initialData.priority || "medium",
+        status: initialData.status || "pending",
+        dueDate: initialData.dueDate
+          ? new Date(initialData.dueDate).toISOString().split("T")[0]
+          : "",
+        category: initialData.category || "General",
+        subTasks: initialData.subTasks || [],
+        team: initialData.team?._id || initialData.team || "",
+        assignee: initialData.assignee?._id || initialData.assignee || "",
       });
+      if (isPage) {
+        setExpandedOptional({
+          team: !!(initialData.team?._id || initialData.team),
+          subtasks: !!(initialData.subTasks?.length),
+        });
+      }
     }
-  }, [initialData]);
+  }, [initialData, isPage]);
+
+  useEffect(() => {
+    onFormChange?.(formData);
+  }, [formData, onFormChange]);
+
+  useEffect(() => {
+    if (!isPage || isEdit) return;
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("task-form-submit")?.click();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPage, isEdit]);
+
+  const selectedTeam = useMemo(
+    () => teams.find((t) => t._id === formData.team),
+    [teams, formData.team]
+  );
+
+  const assigneeOptions = useMemo(() => {
+    if (selectedTeam?.members?.length) {
+      return selectedTeam.members.map((m) => ({
+        id: m.user?._id || m.user,
+        name: m.user?.name || "Member",
+        email: m.user?.email,
+      }));
+    }
+    return (currentWorkspace?.members || []).map((m) => ({
+      id: m.user?._id || m.user,
+      name: m.user?.name || "Member",
+      email: m.user?.email,
+    }));
+  }, [selectedTeam, currentWorkspace]);
+
+  const completionPercent = useMemo(() => {
+    let score = 0;
+    if (formData.title.trim()) score += 50;
+    if (formData.description.trim()) score += 15;
+    if (formData.dueDate) score += 20;
+    if (formData.category && formData.category !== "General") score += 5;
+    if (formData.team || formData.assignee) score += 5;
+    if (formData.subTasks.length > 0) score += 5;
+    return Math.min(score, 100);
+  }, [formData]);
+
+  const resetForm = useCallback(() => {
+    setFormData(INITIAL_FORM);
+    setExpandedOptional({ team: false, subtasks: false });
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "team") next.assignee = "";
+      return next;
+    });
+  };
+
+  const handlePriorityChange = (value) => {
+    setFormData((prev) => ({ ...prev, priority: value }));
+  };
+
+  const handleCategoryChange = (value) => {
+    setFormData((prev) => ({ ...prev, category: value }));
+  };
+
+  const setDueDateShortcut = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    setFormData((prev) => ({
+      ...prev,
+      dueDate: d.toISOString().split("T")[0],
+    }));
+  };
+
+  const clearDueDate = () => {
+    setFormData((prev) => ({ ...prev, dueDate: "" }));
   };
 
   const handleSubTaskChange = (index, value) => {
     const updatedSubTasks = [...formData.subTasks];
     updatedSubTasks[index].title = value;
-    setFormData(prev => ({ ...prev, subTasks: updatedSubTasks }));
+    setFormData((prev) => ({ ...prev, subTasks: updatedSubTasks }));
   };
 
   const addSubTask = () => {
-    setFormData(prev => ({ ...prev, subTasks: [...prev.subTasks, { title: '', isCompleted: false }] }));
+    setExpandedOptional((prev) => ({ ...prev, subtasks: true }));
+    setFormData((prev) => ({
+      ...prev,
+      subTasks: [...prev.subTasks, { title: "", isCompleted: false }],
+    }));
   };
 
   const removeSubTask = (index) => {
-    const updatedSubTasks = formData.subTasks.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, subTasks: updatedSubTasks }));
+    setFormData((prev) => ({
+      ...prev,
+      subTasks: prev.subTasks.filter((_, i) => i !== index),
+    }));
   };
 
-  const handleSubmit = async (e) => {
+  const toggleOptional = (section) => {
+    setExpandedOptional((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const handleSubmit = async (e, createAnother = false) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (initialData && initialData._id) {
-        await editTask(initialData._id, formData);
+      const payload = {
+        ...formData,
+        team: formData.team || undefined,
+        assignee: formData.assignee || undefined,
+        dueDate: formData.dueDate || null,
+      };
+
+      if (isEdit) {
+        await editTask(initialData._id, payload);
+        if (onSuccess) onSuccess();
       } else {
-        await addTask(formData);
-        if (!onSuccess) navigate('/tasks');
+        const success = await addTask(payload);
+        if (success) {
+          if (createAnother) {
+            resetForm();
+          } else if (onSuccess) {
+            onSuccess();
+          } else {
+            navigate("/tasks");
+          }
+        }
       }
-      if (onSuccess) onSuccess();
     } catch (error) {
       console.error(error);
     } finally {
@@ -69,134 +225,423 @@ const TaskForm = ({ initialData = null, onSuccess = null }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="form-container">
-      <div className="form-group">
-        <label className="form-label">Task Title <span className="required">*</span></label>
-        <input 
-          type="text" 
-          name="title" 
-          value={formData.title} 
-          onChange={handleChange} 
-          required 
-          className="form-input" 
-          placeholder="Enter task title" 
-        />
-      </div>
-
-      <div className="form-group">
-        <label className="form-label">Description</label>
-        <textarea 
-          name="description" 
-          value={formData.description} 
-          onChange={handleChange} 
-          className="form-textarea" 
-          placeholder="Enter task description" 
-          rows="4" 
-        />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div className="form-group">
-          <label className="form-label">Priority</label>
-          <select name="priority" value={formData.priority} onChange={handleChange} className="form-select">
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
+    <form
+      onSubmit={(e) => handleSubmit(e, false)}
+      className={`task-form ${isPage ? "task-form--page" : "task-form--modal"}`}
+    >
+      {isPage && !isEdit && (
+        <div className="task-form-progress">
+          <div className="task-form-progress-label">
+            <span>Form progress</span>
+            <span>{completionPercent}%</span>
+          </div>
+          <div className="task-form-progress-bar">
+            <div
+              className="task-form-progress-fill"
+              style={{ width: `${completionPercent}%` }}
+            />
+          </div>
         </div>
+      )}
+
+      <section className="task-form-block">
+        <header className="task-form-block-header">
+          <span className="task-form-block-step">1</span>
+          <span className="task-form-block-icon">
+            <FileText size={18} />
+          </span>
+          <div>
+            <h3 className="task-form-block-title">Task details</h3>
+            <p className="task-form-block-desc">What needs to be done?</p>
+          </div>
+        </header>
 
         <div className="form-group">
-          <label className="form-label">Status</label>
-          <select name="status" value={formData.status} onChange={handleChange} className="form-select">
-            <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div className="form-group">
-          <label className="form-label">Due Date</label>
-          <input 
-            type="date" 
-            name="dueDate" 
-            value={formData.dueDate} 
-            onChange={handleChange} 
-            className="form-input" 
+          <label className="form-label" htmlFor="task-title">
+            Title <span className="required">*</span>
+          </label>
+          <input
+            id="task-title"
+            type="text"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            required
+            className="form-input form-input-lg"
+            placeholder="e.g. Prepare weekly status report"
+            autoFocus={isPage && !isEdit}
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">Category</label>
-          <input 
-            type="text" 
-            name="category" 
-            value={formData.category} 
-            onChange={handleChange} 
-            className="form-input" 
-            placeholder="e.g., Work, Personal" 
+          <label className="form-label" htmlFor="task-description">
+            Description
+            <span className="form-label-optional">optional</span>
+          </label>
+          <textarea
+            id="task-description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            className="form-textarea"
+            placeholder="Add context, links, or acceptance criteria..."
+            rows={isPage ? 4 : 3}
           />
         </div>
-      </div>
+      </section>
 
-      <div className="form-group" style={{ marginTop: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <label className="form-label" style={{ margin: 0 }}>Sub-tasks (Checklist)</label>
-          <button 
-            type="button" 
-            onClick={addSubTask}
-            style={{ fontSize: '13px', color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}
+      <section className="task-form-block">
+        <header className="task-form-block-header">
+          <span className="task-form-block-step">2</span>
+          <span className="task-form-block-icon">
+            <CalendarDays size={18} />
+          </span>
+          <div>
+            <h3 className="task-form-block-title">Schedule & priority</h3>
+            <p className="task-form-block-desc">When is it due and how urgent is it?</p>
+          </div>
+        </header>
+
+        <div className="form-group">
+          <span className="form-label">Priority</span>
+          <div className="priority-pills" role="group" aria-label="Priority">
+            {PRIORITIES.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                className={`priority-pill priority-pill--${value} ${
+                  formData.priority === value ? "active" : ""
+                }`}
+                onClick={() => handlePriorityChange(value)}
+                aria-pressed={formData.priority === value}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="task-due-date">
+            Due date
+            <span className="form-label-optional">optional</span>
+          </label>
+          <div className="due-date-row">
+            <input
+              id="task-due-date"
+              type="date"
+              name="dueDate"
+              value={formData.dueDate}
+              onChange={handleChange}
+              className="form-input"
+            />
+            {isPage && (
+              <div className="due-date-shortcuts">
+                {DUE_DATE_SHORTCUTS.map(({ label, days }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="due-date-shortcut"
+                    onClick={() => setDueDateShortcut(days)}
+                  >
+                    {label}
+                  </button>
+                ))}
+                {formData.dueDate && (
+                  <button
+                    type="button"
+                    className="due-date-shortcut due-date-shortcut--clear"
+                    onClick={clearDueDate}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <span className="form-label">Category</span>
+          {isPage ? (
+            <div className="category-chips" role="group" aria-label="Category">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`category-chip ${formData.category === c ? "active" : ""}`}
+                  onClick={() => handleCategoryChange(c)}
+                  aria-pressed={formData.category === c}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <select
+              id="task-category"
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="form-select"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {isEdit && (
+          <div className="form-group">
+            <label className="form-label" htmlFor="task-status">
+              Status
+            </label>
+            <select
+              id="task-status"
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className="form-select"
+            >
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+        )}
+      </section>
+
+      <section
+        className={`task-form-block task-form-block--collapsible ${
+          expandedOptional.team ? "is-open" : ""
+        }`}
+      >
+        <header className="task-form-block-header task-form-block-header--toggle">
+          <div className="task-form-block-header-left">
+            <span className="task-form-block-step">3</span>
+            <span className="task-form-block-icon">
+              <Users size={18} />
+            </span>
+            <div>
+              <h3 className="task-form-block-title">Team & assignment</h3>
+              <p className="task-form-block-desc">
+                {expandedOptional.team
+                  ? "Assign to a team member"
+                  : "Optional — click to expand"}
+              </p>
+            </div>
+          </div>
+          {isPage && (
+            <button
+              type="button"
+              className="section-toggle-btn"
+              onClick={() => toggleOptional("team")}
+              aria-expanded={expandedOptional.team}
+            >
+              {expandedOptional.team ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+          )}
+        </header>
+
+        {(!isPage || expandedOptional.team) && (
+          <div className="task-form-block-body">
+            <div className="form-row-2">
+              <div className="form-group">
+                <label className="form-label" htmlFor="task-team">
+                  Team
+                </label>
+                <select
+                  id="task-team"
+                  name="team"
+                  value={formData.team}
+                  onChange={handleChange}
+                  className="form-select"
+                >
+                  <option value="">Personal task</option>
+                  {teams.map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="task-assignee">
+                  <User size={14} aria-hidden="true" /> Assign to
+                </label>
+                <select
+                  id="task-assignee"
+                  name="assignee"
+                  value={formData.assignee}
+                  onChange={handleChange}
+                  className="form-select"
+                >
+                  <option value="">Unassigned</option>
+                  {assigneeOptions.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section
+        className={`task-form-block task-form-block--collapsible ${
+          expandedOptional.subtasks ? "is-open" : ""
+        }`}
+      >
+        <header className="task-form-block-header task-form-block-header--row">
+          <div className="task-form-block-header-left">
+            <span className="task-form-block-step">4</span>
+            <span className="task-form-block-icon">
+              <ListChecks size={18} />
+            </span>
+            <div>
+              <h3 className="task-form-block-title">
+                Sub-tasks
+                {formData.subTasks.length > 0 && (
+                  <span className="task-form-block-count">{formData.subTasks.length}</span>
+                )}
+              </h3>
+              <p className="task-form-block-desc">
+                {expandedOptional.subtasks
+                  ? "Break work into smaller steps"
+                  : "Optional — click to expand"}
+              </p>
+            </div>
+          </div>
+          <div className="task-form-block-header-actions">
+            {expandedOptional.subtasks && (
+              <button type="button" className="subtask-add-btn" onClick={addSubTask}>
+                <Plus size={14} /> Add item
+              </button>
+            )}
+            {isPage && (
+              <button
+                type="button"
+                className="section-toggle-btn"
+                onClick={() => toggleOptional("subtasks")}
+                aria-expanded={expandedOptional.subtasks}
+              >
+                {expandedOptional.subtasks ? (
+                  <ChevronUp size={18} />
+                ) : (
+                  <ChevronDown size={18} />
+                )}
+              </button>
+            )}
+          </div>
+        </header>
+
+        {(!isPage || expandedOptional.subtasks) && (
+          <div className="task-form-block-body">
+            {formData.subTasks.length === 0 ? (
+              <div className="subtask-empty">
+                <ListChecks size={20} />
+                <p>No sub-tasks yet</p>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={addSubTask}>
+                  <Plus size={14} /> Add first sub-task
+                </button>
+              </div>
+            ) : (
+              <div className="subtask-list">
+                {formData.subTasks.map((st, index) => (
+                  <div key={index} className="subtask-row">
+                    <button
+                      type="button"
+                      className={`subtask-check ${st.isCompleted ? "checked" : ""}`}
+                      onClick={() => {
+                        const updated = [...formData.subTasks];
+                        updated[index].isCompleted = !updated[index].isCompleted;
+                        setFormData((prev) => ({ ...prev, subTasks: updated }));
+                      }}
+                      aria-label={st.isCompleted ? "Mark incomplete" : "Mark complete"}
+                    >
+                      {st.isCompleted && <CheckCircle2 size={14} />}
+                    </button>
+                    <input
+                      type="text"
+                      value={st.title}
+                      onChange={(e) => handleSubTaskChange(index, e.target.value)}
+                      className={`form-input subtask-input ${st.isCompleted ? "completed" : ""}`}
+                      placeholder="Sub-task title"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="subtask-remove-btn"
+                      onClick={() => removeSubTask(index)}
+                      aria-label="Remove sub-task"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      <div className={`form-actions ${isPage ? "form-actions--page" : ""}`}>
+        {isPage && !onSuccess && (
+          <div className="form-actions-left">
+            <Link to="/tasks" className="btn btn-secondary">
+              Cancel
+            </Link>
+            {isPage && !isEdit && (
+              <span className="form-kbd-hint">
+                <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to save
+              </span>
+            )}
+          </div>
+        )}
+        {onSuccess && (
+          <button type="button" className="btn btn-secondary" onClick={onSuccess}>
+            Cancel
+          </button>
+        )}
+        <div className="form-actions-right">
+          {isPage && !isEdit && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={loading || !formData.title.trim()}
+              onClick={(e) => handleSubmit(e, true)}
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="spin" /> Saving...
+                </>
+              ) : (
+                "Create & add another"
+              )}
+            </button>
+          )}
+          <button
+            id="task-form-submit"
+            type="submit"
+            className="btn btn-primary btn-lg"
+            disabled={loading}
           >
-            + Add Item
+            {loading ? (
+              <>
+                <Loader2 size={16} className="spin" /> Saving...
+              </>
+            ) : isEdit ? (
+              "Update Task"
+            ) : (
+              "Create Task"
+            )}
           </button>
         </div>
-        {formData.subTasks.map((st, index) => (
-          <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-            <input
-              type="checkbox"
-              checked={st.isCompleted}
-              onChange={(e) => {
-                const updatedSubTasks = [...formData.subTasks];
-                updatedSubTasks[index].isCompleted = e.target.checked;
-                setFormData(prev => ({ ...prev, subTasks: updatedSubTasks }));
-              }}
-              style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent)' }}
-            />
-            <input 
-              type="text" 
-              value={st.title}
-              onChange={(e) => handleSubTaskChange(index, e.target.value)}
-              className="form-input" 
-              placeholder="Sub-task title"
-              style={{ flex: 1, textDecoration: st.isCompleted ? 'line-through' : 'none', color: st.isCompleted ? 'var(--text-muted)' : 'inherit' }}
-              required
-            />
-            <button 
-              type="button" 
-              onClick={() => removeSubTask(index)}
-              style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: 'none', borderRadius: '8px', padding: '0 12px', cursor: 'pointer', height: '100%' }}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        {formData.subTasks.length === 0 && (
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No sub-tasks added.</div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-        <button 
-          type="submit" 
-          disabled={loading}
-          style={{ 
-            padding: '12px 24px', background: 'var(--accent)', color: 'white', 
-            borderRadius: '8px', fontWeight: 'bold', opacity: loading ? 0.7 : 1 
-          }}
-        >
-          {loading ? 'Saving...' : (initialData ? 'Update Task' : 'Add Task')}
-        </button>
       </div>
     </form>
   );

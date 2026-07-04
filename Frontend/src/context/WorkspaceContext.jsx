@@ -67,6 +67,15 @@ export const WorkspaceProvider = ({ children }) => {
     setTeams(res.data || []);
   };
 
+  const refreshWorkspace = async () => {
+    if (!currentWorkspace) return;
+    const res = await fetchWorkspace(currentWorkspace._id);
+    setCurrentWorkspace(res.data.workspace);
+    setTeams(res.data.teams || []);
+    const wsRes = await fetchWorkspaces();
+    setWorkspaces(wsRes.data || []);
+  };
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -78,6 +87,7 @@ export const WorkspaceProvider = ({ children }) => {
         selectWorkspace,
         addWorkspace,
         refreshTeams,
+        refreshWorkspace,
         setTeams,
       }}
     >

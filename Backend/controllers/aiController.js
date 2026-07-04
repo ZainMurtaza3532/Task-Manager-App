@@ -216,12 +216,29 @@ export const chatWithAI = async (req, res, next) => {
 
     const tasks = await getUserTasks(req.user.id, { status: { $ne: "completed" } });
 
+    const taskSummary = tasks.map((t) => `- ${t.title} (${t.status}, ${t.priority}${t.dueDate ? `, due ${new Date(t.dueDate).toLocaleDateString()}` : ""})`).join("\n");
+
+    const historyMessages = history
+      .slice(-10)
+      .filter((h) => h.role && h.content)
+      .map((h) => ({ role: h.role, content: h.content }));
+
     const messages = [
       {
         role: "system",
-        content: `You are TaskFlow Pro AI Assistant. You help users with task planning, prioritization, productivity, and project breakdown. User's open tasks: ${JSON.stringify(tasks)}. Provide thoughtful, detailed, and actionable advice. When possible, explain why recommendations make sense, describe the next steps, and mention any risks or follow-up actions. If the user question is vague, ask a clarifying question.`,
+        content: `You are TaskFlow Pro AI Assistant — a helpful task management coach. Answer the user's question directly and specifically. Use their task data when relevant.
+
+User's open tasks:
+${taskSummary || "No open tasks."}
+
+Guidelines:
+- Answer exactly what was asked; don't give generic lists unless asked
+- Reference specific task names when helpful
+- Give actionable next steps
+- Keep responses clear and concise (2-5 short paragraphs max)
+- If the question is about planning, prioritization, deadlines, or productivity, tailor advice to their tasks`,
       },
-      ...history.slice(-10).map((h) => ({ role: h.role, content: h.content })),
+      ...historyMessages,
       { role: "user", content: message },
     ];
 
