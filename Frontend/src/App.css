@@ -4155,4 +4155,3 @@ textarea {
 .workspace-member-name { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .workspace-member-email { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .workspace-member-role { font-size: 10px; font-weight: 700; text-transform: uppercase; flex-shrink: 0; }
-
