@@ -39,6 +39,17 @@ export const ROLES = {
   viewer: { label: "Viewer", color: "#64748b" },
 };
 
+export const LABEL_COLORS = [
+  "#ef4444",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#64748b",
+];
+
 export const NOTIFICATION_TYPES = {
   task_assigned: { icon: "UserPlus", color: "#6366f1" },
   task_updated: { icon: "Edit", color: "#3b82f6" },
@@ -47,6 +58,8 @@ export const NOTIFICATION_TYPES = {
   task_overdue: { icon: "AlertTriangle", color: "#ef4444" },
   team_invite: { icon: "Users", color: "#8b5cf6" },
   team_joined: { icon: "UserCheck", color: "#10b981" },
+  comment: { icon: "MessageSquare", color: "#6366f1" },
+  mention: { icon: "AtSign", color: "#ec4899" },
   system: { icon: "Bell", color: "#64748b" },
 };
 

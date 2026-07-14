@@ -1,7 +1,16 @@
 import Task from "../models/Task.js";
 import Team from "../models/Team.js";
+import TaskActivity from "../models/TaskActivity.js";
 import { createNotification, emitTaskUpdate } from "../utils/notificationService.js";
 import { logActivity } from "./teamController.js";
+
+const logTaskActivity = async (taskId, actorId, action, description, metadata = {}) => {
+  try {
+    await TaskActivity.create({ task: taskId, actor: actorId, action, description, metadata });
+  } catch {
+    // non-blocking
+  }
+};
 
 const canAccessTask = async (task, userId) => {
   const uid = userId.toString();
@@ -32,6 +41,9 @@ const buildTaskFilter = (req) => {
       $or: [
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
+        { tags: { $regex: search, $options: "i" } },
+        { "labels.name": { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
       ],
     });
   }
@@ -107,6 +119,70 @@ export const getTaskStats = async (req, res, next) => {
                     ],
                   },
                 },
+                dueSoon: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ["$status", "completed"] },
+                          { $ne: ["$dueDate", null] },
+                          { $gte: ["$dueDate", new Date()] },
+                          {
+                            $lte: [
+                              "$dueDate",
+                              new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                            ],
+                          },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                estimatedMinutes: { $sum: "$estimatedMinutes" },
+                loggedMinutes: { $sum: "$loggedMinutes" },
+              },
+            },
+          ],
+          upcoming: [
+            {
+              $match: {
+                isDeleted: false,
+                $or: [{ user: userId }, { assignee: userId }],
+                status: { $ne: "completed" },
+                dueDate: { $ne: null, $gte: new Date() },
+              },
+            },
+            { $sort: { dueDate: 1 } },
+            { $limit: 8 },
+            {
+              $project: {
+                title: 1,
+                priority: 1,
+                status: 1,
+                dueDate: 1,
+                category: 1,
+              },
+            },
+          ],
+          recent: [
+            {
+              $match: {
+                isDeleted: false,
+                $or: [{ user: userId }, { assignee: userId }],
+              },
+            },
+            { $sort: { updatedAt: -1 } },
+            { $limit: 8 },
+            {
+              $project: {
+                title: 1,
+                priority: 1,
+                status: 1,
+                dueDate: 1,
+                updatedAt: 1,
+                category: 1,
               },
             },
           ],
@@ -121,12 +197,19 @@ export const getTaskStats = async (req, res, next) => {
     const activeStats = stats.active[0] || {
       total: 0, pending: 0, inProgress: 0, completed: 0,
       highPriority: 0, mediumPriority: 0, lowPriority: 0, overdue: 0,
+      dueSoon: 0, estimatedMinutes: 0, loggedMinutes: 0,
     };
     const trashedCount = stats.trashed[0]?.count || 0;
 
     res.status(200).json({
       success: true,
-      data: { ...activeStats, _id: undefined, trashedCount },
+      data: {
+        ...activeStats,
+        _id: undefined,
+        trashedCount,
+        upcoming: stats.upcoming || [],
+        recent: stats.recent || [],
+      },
     });
   } catch (error) {
     next(error);
@@ -146,7 +229,9 @@ export const getTaskById = async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id)
       .populate("assignee", "name email avatar")
-      .populate("team", "name color");
+      .populate("createdBy", "name email avatar")
+      .populate("team", "name color")
+      .populate("attachments.uploadedBy", "name email");
 
     if (!task || task.isDeleted) {
       const error = new Error("Task not found");
@@ -171,6 +256,7 @@ export const createTask = async (req, res, next) => {
     const {
       title, description, priority, status, dueDate, category,
       subTasks, team, workspace, assignee, scheduledDate, estimatedMinutes,
+      labels, tags,
     } = req.body;
 
     const taskData = {
@@ -182,6 +268,8 @@ export const createTask = async (req, res, next) => {
       scheduledDate: scheduledDate || null,
       category,
       subTasks: subTasks || [],
+      labels: labels || [],
+      tags: tags || [],
       user: req.user.id,
       createdBy: req.user.id,
       estimatedMinutes: estimatedMinutes || 0,
@@ -212,8 +300,11 @@ export const createTask = async (req, res, next) => {
     }
 
     const task = await Task.create(taskData);
+    await logTaskActivity(task._id, req.user.id, "created", `created task "${title}"`);
+
     const populated = await Task.findById(task._id)
       .populate("assignee", "name email avatar")
+      .populate("createdBy", "name email avatar")
       .populate("team", "name color");
 
     emitTaskUpdate(populated.toObject(), "task_created");
@@ -262,6 +353,8 @@ export const updateTask = async (req, res, next) => {
 
     const previousAssignee = task.assignee?.toString();
     const previousStatus = task.status;
+    const previousPriority = task.priority;
+    const previousDue = task.dueDate?.toISOString?.() || task.dueDate;
 
     if (req.body.assignee && task.team) {
       const teamDoc = await Team.findById(task.team);
@@ -272,11 +365,42 @@ export const updateTask = async (req, res, next) => {
       }
     }
 
-    Object.assign(task, req.body);
+    const allowed = [
+      "title", "description", "priority", "status", "dueDate", "scheduledDate",
+      "category", "subTasks", "team", "workspace", "assignee", "labels", "tags",
+      "estimatedMinutes", "loggedMinutes",
+    ];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) task[key] = req.body[key];
+    }
     await task.save();
+
+    if (req.body.status && req.body.status !== previousStatus) {
+      await logTaskActivity(task._id, req.user.id, "status_changed", `changed status to ${req.body.status}`, {
+        from: previousStatus,
+        to: req.body.status,
+      });
+    } else if (req.body.priority && req.body.priority !== previousPriority) {
+      await logTaskActivity(task._id, req.user.id, "priority_changed", `changed priority to ${req.body.priority}`, {
+        from: previousPriority,
+        to: req.body.priority,
+      });
+    } else if (req.body.dueDate !== undefined) {
+      const nextDue = req.body.dueDate ? new Date(req.body.dueDate).toISOString() : null;
+      if (nextDue !== previousDue) {
+        await logTaskActivity(task._id, req.user.id, "due_date_changed", "updated the due date");
+      }
+    } else if (req.body.assignee && req.body.assignee !== previousAssignee) {
+      await logTaskActivity(task._id, req.user.id, "assigned", "updated assignee");
+    } else if (req.body.labels || req.body.tags) {
+      await logTaskActivity(task._id, req.user.id, "label_changed", "updated labels/tags");
+    } else {
+      await logTaskActivity(task._id, req.user.id, "updated", "updated the task");
+    }
 
     const populated = await Task.findById(task._id)
       .populate("assignee", "name email avatar")
+      .populate("createdBy", "name email avatar")
       .populate("team", "name color");
 
     emitTaskUpdate(populated.toObject(), "task_updated");

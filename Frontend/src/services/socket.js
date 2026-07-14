@@ -51,3 +51,15 @@ export const joinTeam = (teamId) => {
 export const leaveTeam = (teamId) => {
   socket?.emit("leave_team", teamId);
 };
+
+export const joinTaskRoom = (taskId) => {
+  socket?.emit("join_task", taskId);
+};
+
+export const leaveTaskRoom = (taskId) => {
+  socket?.emit("leave_task", taskId);
+};
+
+export const emitCommentTyping = (taskId, isTyping) => {
+  socket?.emit("typing_comment", { taskId, isTyping });
+};

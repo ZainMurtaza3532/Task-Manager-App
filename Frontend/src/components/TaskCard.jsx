@@ -1,5 +1,6 @@
 import React from "react";
-import { Edit2, Trash2, RotateCcw, XCircle, Calendar, Tag, CheckCircle, CheckSquare, User, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Edit2, Trash2, RotateCcw, XCircle, Calendar, Tag, CheckCircle, CheckSquare, Users, ExternalLink } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 
 const TaskCard = ({ task, onEdit, onDelete, onRestore, onPermanentDelete, onComplete, isTrash, showAssignee = true }) => {
@@ -42,10 +43,21 @@ const TaskCard = ({ task, onEdit, onDelete, onRestore, onPermanentDelete, onComp
       <div className="task-card-priority-bar" />
 
       <div className="task-card-header">
-        <h3 className="task-card-title">{task.title}</h3>
+        <h3 className="task-card-title">
+          {!isTrash ? (
+            <Link to={`/tasks/${task._id}`} className="task-card-title-link">
+              {task.title}
+            </Link>
+          ) : (
+            task.title
+          )}
+        </h3>
         <div className="task-card-actions">
           {!isTrash ? (
             <>
+              <Link to={`/tasks/${task._id}`} className="task-action-btn" title="Open details">
+                <ExternalLink size={14} />
+              </Link>
               {task.status !== "completed" && onComplete && (
                 <button type="button" className="task-action-btn" onClick={() => onComplete(task)} title="Complete">
                   <CheckCircle size={14} />
@@ -78,18 +90,27 @@ const TaskCard = ({ task, onEdit, onDelete, onRestore, onPermanentDelete, onComp
       <div className="task-card-meta">
         {getPriorityBadge(task.priority)}
         {getStatusBadge(task.status)}
+        {task.labels?.slice(0, 2).map((label, i) => (
+          <span
+            key={i}
+            className="task-label-chip mini"
+            style={{ background: `${label.color}22`, color: label.color, borderColor: label.color }}
+          >
+            {label.name}
+          </span>
+        ))}
       </div>
 
-      {task.description && (
-        <p className="task-card-desc">{task.description}</p>
-      )}
+      {task.description && <p className="task-card-desc">{task.description}</p>}
 
       {subtotal > 0 && (
         <div className="task-subtask-progress">
           <div className="task-subtask-bar">
             <div className="task-subtask-fill" style={{ width: `${Math.round((subDone / subtotal) * 100)}%` }} />
           </div>
-          <span><CheckSquare size={12} /> {subDone}/{subtotal} sub-tasks</span>
+          <span>
+            <CheckSquare size={12} /> {subDone}/{subtotal} sub-tasks
+          </span>
         </div>
       )}
 

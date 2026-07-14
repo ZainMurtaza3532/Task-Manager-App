@@ -32,7 +32,7 @@ const corsOrigins = [
   "https://task-manager-app-theta-blue.vercel.app",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-   ];
+];
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({ origin: corsOrigins, credentials: true }));
@@ -45,7 +45,17 @@ app.get("/", (req, res) => {
     success: true,
     message: "TaskFlow Pro 2.0 API is running",
     version: "2.0.0",
-    features: ["notifications", "teams", "calendar", "time-tracking", "files", "ai"],
+    features: [
+      "notifications",
+      "teams",
+      "calendar",
+      "time-tracking",
+      "files",
+      "ai",
+      "comments",
+      "presence",
+      "task-activity",
+    ],
   });
 });
 

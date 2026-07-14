@@ -12,14 +12,25 @@ const QUICK_PROMPTS = [
   "Productivity tips",
 ];
 
+const AI_HISTORY_KEY = "taskflow_ai_chat_history";
+
 const formatMessage = (text) => {
   if (!text) return null;
   return text.split("\n").map((line, i) => {
-    const boldLine = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    const parts = [];
+    const re = /\*\*(.+?)\*\*/g;
+    let last = 0;
+    let match;
+    while ((match = re.exec(line)) !== null) {
+      if (match.index > last) parts.push(line.slice(last, match.index));
+      parts.push(<strong key={`${i}-${match.index}`}>{match[1]}</strong>);
+      last = match.index + match[0].length;
+    }
+    if (last < line.length) parts.push(line.slice(last));
     return (
       <span key={i}>
         {i > 0 && <br />}
-        <span dangerouslySetInnerHTML={{ __html: boldLine }} />
+        {parts.length ? parts : line}
       </span>
     );
   });
@@ -34,10 +45,31 @@ const AIAssistant = () => {
   const [insights, setInsights] = useState(null);
   const [priorityInput, setPriorityInput] = useState({ title: "", description: "", dueDate: "", complexity: "medium" });
   const [prediction, setPrediction] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem(AI_HISTORY_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [chatInput, setChatInput] = useState("");
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(messages.slice(-40)));
+    } catch {
+      // ignore quota
+    }
+  }, [messages]);
+
+  const clearHistory = () => {
+    setMessages([]);
+    localStorage.removeItem(AI_HISTORY_KEY);
+    addToast("Chat history cleared", "success");
+  };
 
   useEffect(() => {
     if (tab === "insights") {
@@ -136,9 +168,14 @@ const AIAssistant = () => {
             <Sparkles size={28} /> AI Assistant
           </h1>
           <p className="page-subtitle">
-            Ask questions about your tasks — get specific, actionable answers
+            Context-aware answers, breakdowns, and productivity insights
           </p>
         </div>
+        {tab === "chat" && messages.length > 0 && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={clearHistory}>
+            Clear history
+          </button>
+        )}
       </div>
 
       <div className="ai-tabs">

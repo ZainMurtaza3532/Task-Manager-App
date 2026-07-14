@@ -13,8 +13,10 @@ import {
   Kanban,
   Calendar,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -25,6 +27,7 @@ import {
   BarElement,
 } from "chart.js";
 import { Pie, Bar } from "react-chartjs-2";
+import { Skeleton } from "../components/Skeleton";
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -42,8 +45,11 @@ const Dashboard = () => {
   const inProgress = stats.inProgress || 0;
   const pending = stats.pending || 0;
   const overdue = stats.overdue || 0;
+  const dueSoon = stats.dueSoon || 0;
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   const activeTasks = pending + inProgress;
+  const upcoming = stats.upcoming || [];
+  const recent = stats.recent || [];
 
   const isDark = resolvedTheme === "dark";
   const gridColor = isDark ? "rgba(148, 163, 184, 0.12)" : "rgba(100, 116, 139, 0.12)";
@@ -85,6 +91,13 @@ const Dashboard = () => {
       color: "var(--danger)",
       bg: "var(--danger-bg)",
     },
+    {
+      title: "Due soon",
+      value: dueSoon,
+      icon: Calendar,
+      color: "var(--warning, #f59e0b)",
+      bg: isDark ? "rgba(245, 158, 11, 0.12)" : "rgba(245, 158, 11, 0.1)",
+    },
   ];
 
   const quickActions = [
@@ -92,6 +105,7 @@ const Dashboard = () => {
     { to: "/tasks", label: "All Tasks", icon: ListTodo },
     { to: "/kanban", label: "Kanban", icon: Kanban },
     { to: "/calendar", label: "Calendar", icon: Calendar },
+    { to: "/ai-assistant", label: "AI Assist", icon: Sparkles },
     { to: "/teams", label: "Teams", icon: Users },
   ];
 
@@ -203,21 +217,27 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="stats-grid">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div className="stat-card" key={stat.title} style={{ "--stat-color": stat.color }}>
-              <div className="stat-icon" style={{ background: stat.bg, color: stat.color }}>
-                <Icon size={22} />
+      <div className="stats-grid stats-grid--dense">
+        {loading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div className="stat-card" key={i}>
+                <Skeleton height={64} />
               </div>
-              <div className="stat-info">
-                <div className="stat-value">{loading ? "—" : stat.value}</div>
-                <div className="stat-label">{stat.title}</div>
-              </div>
-            </div>
-          );
-        })}
+            ))
+          : statCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div className="stat-card" key={stat.title} style={{ "--stat-color": stat.color }}>
+                  <div className="stat-icon" style={{ background: stat.bg, color: stat.color }}>
+                    <Icon size={22} />
+                  </div>
+                  <div className="stat-info">
+                    <div className="stat-value">{stat.value}</div>
+                    <div className="stat-label">{stat.title}</div>
+                  </div>
+                </div>
+              );
+            })}
       </div>
 
       <div className="dashboard-charts">
@@ -247,6 +267,50 @@ const Dashboard = () => {
               <div className="dashboard-chart-empty">No tasks yet</div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="dashboard-panels">
+        <div className="card dashboard-panel">
+          <div className="dashboard-chart-header">
+            <h2>Upcoming</h2>
+            <Link to="/calendar" className="dashboard-chart-meta link">Calendar</Link>
+          </div>
+          <ul className="dashboard-list">
+            {upcoming.length === 0 && <li className="muted">No upcoming due dates</li>}
+            {upcoming.map((t) => (
+              <li key={t._id}>
+                <Link to={`/tasks/${t._id}`}>
+                  <span className={`prio-dot ${t.priority}`} />
+                  <span className="dashboard-list-title">{t.title}</span>
+                  <span className="dashboard-list-meta">
+                    {t.dueDate ? format(new Date(t.dueDate), "MMM d") : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="card dashboard-panel">
+          <div className="dashboard-chart-header">
+            <h2>Recent activity</h2>
+            <Link to="/tasks" className="dashboard-chart-meta link">All tasks</Link>
+          </div>
+          <ul className="dashboard-list">
+            {recent.length === 0 && <li className="muted">No recent updates</li>}
+            {recent.map((t) => (
+              <li key={t._id}>
+                <Link to={`/tasks/${t._id}`}>
+                  <span className={`prio-dot ${t.priority}`} />
+                  <span className="dashboard-list-title">{t.title}</span>
+                  <span className="dashboard-list-meta">
+                    {t.updatedAt ? formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true }) : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 

@@ -20,7 +20,7 @@ import { ROLES } from "../utils/constants";
 
 const TeamDashboard = () => {
   const { id } = useParams();
-  const { subscribe } = useSocket();
+  const { subscribe, isUserOnline } = useSocket();
   const { user } = useAuth();
   const { addToast } = useToast();
   const [data, setData] = useState(null);
@@ -248,11 +248,16 @@ const TeamDashboard = () => {
                 ).length;
                 return (
                   <div key={memberId} className="member-row">
-                    <div className="member-avatar lg">{m.user?.name?.charAt(0) || "?"}</div>
+                    <div className={`member-avatar lg ${isUserOnline(memberId) ? "online" : ""}`}>
+                      {m.user?.name?.charAt(0) || "?"}
+                    </div>
                     <div className="member-info">
                       <strong>
                         {m.user?.name || "User"}
                         {isSelf && <span className="member-you"> (you)</span>}
+                        <span className={`presence-pill ${isUserOnline(memberId) ? "online" : "offline"}`}>
+                          {isUserOnline(memberId) ? "Online" : "Offline"}
+                        </span>
                       </strong>
                       <span>{m.user?.email}</span>
                       <span className="member-task-count">{assignedCount} task{assignedCount !== 1 ? "s" : ""} assigned</span>

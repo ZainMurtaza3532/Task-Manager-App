@@ -352,8 +352,8 @@ const CalendarPage = () => {
                   </div>
                 </div>
               </div>
-              <Link to="/tasks" className="btn btn-primary btn-full">
-                View in Tasks
+              <Link to={`/tasks/${selectedEvent.resource?._id || selectedEvent.id}`} className="btn btn-primary btn-full">
+                Open task details
               </Link>
             </div>
           ) : (

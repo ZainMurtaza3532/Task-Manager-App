@@ -118,9 +118,9 @@ const DraggableTask = React.memo(({ task, setEditingTask, handleTrash, handleCom
 
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        zIndex: isDragging ? 999 : 1,
-      }
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      zIndex: isDragging ? 999 : 1,
+    }
     : undefined;
 
   return (

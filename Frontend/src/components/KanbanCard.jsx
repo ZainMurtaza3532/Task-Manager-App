@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { GripVertical, Calendar, CheckSquare, User, Edit2, Trash2, CheckCircle } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 
@@ -49,7 +50,11 @@ const KanbanCard = ({ task, onEdit, onDelete, onComplete, isDragging }) => {
           </div>
         </div>
 
-        <h4 className="kanban-card-title">{task.title}</h4>
+        <h4 className="kanban-card-title">
+          <Link to={`/tasks/${task._id}`} className="task-card-title-link" onClick={(e) => e.stopPropagation()}>
+            {task.title}
+          </Link>
+        </h4>
 
         {task.description && (
           <p className="kanban-card-desc">{task.description}</p>

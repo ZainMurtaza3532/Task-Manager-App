@@ -2,16 +2,22 @@ import React, { useState } from "react";
 import { Users, Plus, Link2, Check, X, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { inviteTeamMember, regenerateTeamInvite } from "../services/api";
+import { createTeam, inviteTeamMember, regenerateTeamInvite } from "../services/api";
 import { useToast } from "../context/ToastContext";
+import { useSocket } from "../context/SocketContext";
 import { ROLES } from "../utils/constants";
+
+const TEAM_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 const Teams = () => {
   const { teams, currentWorkspace, refreshTeams, addWorkspace, workspaces, loading } = useWorkspace();
   const { addToast } = useToast();
+  const { onlineUserIds } = useSocket();
   const [showInvite, setShowInvite] = useState(null);
   const [showWorkspaceCreate, setShowWorkspaceCreate] = useState(false);
+  const [showTeamCreate, setShowTeamCreate] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
+  const [teamForm, setTeamForm] = useState({ name: "", description: "", color: TEAM_COLORS[0] });
   const [inviteForm, setInviteForm] = useState({ email: "", role: "member" });
   const [copied, setCopied] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -27,6 +33,35 @@ const Teams = () => {
       setWorkspaceName("");
     } catch (err) {
       addToast(err.response?.data?.message || "Failed to create workspace", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
+    if (!teamForm.name.trim()) {
+      addToast("Enter a team name", "error");
+      return;
+    }
+    if (!currentWorkspace?._id) {
+      addToast("Select or create a workspace first", "error");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createTeam({
+        name: teamForm.name.trim(),
+        description: teamForm.description.trim(),
+        workspaceId: currentWorkspace._id,
+        color: teamForm.color,
+      });
+      addToast("Team created", "success");
+      setShowTeamCreate(false);
+      setTeamForm({ name: "", description: "", color: TEAM_COLORS[0] });
+      await refreshTeams();
+    } catch (err) {
+      addToast(err.response?.data?.message || "Failed to create team", "error");
     } finally {
       setSubmitting(false);
     }
@@ -69,6 +104,11 @@ const Teams = () => {
     }
   };
 
+  const isOnline = (member) => {
+    const id = member.user?._id || member.user;
+    return id && onlineUserIds.includes(id.toString());
+  };
+
   if (!loading && workspaces.length === 0) {
     return (
       <div className="page teams-page">
@@ -106,7 +146,7 @@ const Teams = () => {
 
   return (
     <div className="page teams-page">
-      <div className="page-header">
+      <div className="page-header teams-page-header">
         <div>
           <h1 className="page-title">
             <Users size={28} /> Teams
@@ -117,7 +157,70 @@ const Teams = () => {
               : "Collaborate with your team"}
           </p>
         </div>
+        {currentWorkspace && (
+          <button className="btn btn-primary" onClick={() => setShowTeamCreate(true)}>
+            <Plus size={16} /> Create Team
+          </button>
+        )}
       </div>
+
+      {showTeamCreate && (
+        <div className="modal-overlay" onClick={() => setShowTeamCreate(false)}>
+          <form className="modal-dialog" onSubmit={handleCreateTeam} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Create Team</h3>
+              <button type="button" className="modal-close" onClick={() => setShowTeamCreate(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="form-label">Team name</label>
+                <input
+                  required
+                  placeholder="e.g. Product Design"
+                  value={teamForm.name}
+                  onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                  className="form-input"
+                  autoFocus
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea
+                  placeholder="What does this team work on?"
+                  value={teamForm.description}
+                  onChange={(e) => setTeamForm({ ...teamForm, description: e.target.value })}
+                  className="form-textarea"
+                  rows={3}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Color</label>
+                <div className="label-swatches">
+                  {TEAM_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`label-swatch ${teamForm.color === c ? "active" : ""}`}
+                      style={{ background: c }}
+                      onClick={() => setTeamForm({ ...teamForm, color: c })}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowTeamCreate(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? "Creating..." : "Create Team"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showInvite && (
         <div className="modal-overlay" onClick={() => setShowInvite(null)}>
@@ -181,7 +284,11 @@ const Teams = () => {
             <p className="team-card-desc">{team.description || "No description"}</p>
             <div className="team-members-preview">
               {team.members?.slice(0, 5).map((m) => (
-                <span key={m.user?._id || m.user} className="member-avatar" title={m.user?.name}>
+                <span
+                  key={m.user?._id || m.user}
+                  className={`member-avatar ${isOnline(m) ? "online" : ""}`}
+                  title={`${m.user?.name || "Member"}${isOnline(m) ? " · Online" : " · Offline"}`}
+                >
                   {m.user?.name?.charAt(0) || "?"}
                 </span>
               ))}
@@ -205,8 +312,11 @@ const Teams = () => {
         {teams.length === 0 && !loading && (
           <div className="empty-state">
             <Users size={48} />
-            <h3>No teams available</h3>
-            <p>You are not part of any teams yet. Ask your admin for an invite link to join.</p>
+            <h3>No teams yet</h3>
+            <p>Create your first team to start collaborating, or join with an invite link.</p>
+            <button className="btn btn-primary" onClick={() => setShowTeamCreate(true)}>
+              <Plus size={16} /> Create Team
+            </button>
           </div>
         )}
       </div>

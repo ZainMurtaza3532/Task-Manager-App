@@ -7,6 +7,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const AddTask = lazy(() => import('./pages/AddTask'));
 const Tasks = lazy(() => import('./pages/Tasks'));
+const TaskDetails = lazy(() => import('./pages/TaskDetails'));
 const Trash = lazy(() => import('./pages/Trash'));
 const CompletedTasks = lazy(() => import('./pages/CompletedTasks'));
 const Kanban = lazy(() => import('./pages/Kanban'));
@@ -44,6 +45,7 @@ const App = () => {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="add-task" element={<AddTask />} />
                 <Route path="tasks" element={<Tasks />} />
+                <Route path="tasks/:id" element={<TaskDetails />} />
                 <Route path="kanban" element={<Kanban />} />
                 <Route path="calendar" element={<Calendar />} />
                 <Route path="time-tracking" element={<TimeTracking />} />

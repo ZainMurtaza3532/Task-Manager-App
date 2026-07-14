@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Hash,
 } from "lucide-react";
 import { CATEGORIES } from "../utils/constants";
 
@@ -39,6 +40,9 @@ const INITIAL_FORM = {
   subTasks: [],
   team: "",
   assignee: "",
+  tags: [],
+  labels: [],
+  estimatedMinutes: 0,
 };
 
 const TaskForm = ({
@@ -55,7 +59,9 @@ const TaskForm = ({
   const [expandedOptional, setExpandedOptional] = useState({
     team: false,
     subtasks: false,
+    labels: false,
   });
+  const [tagDraft, setTagDraft] = useState("");
 
   const isPage = variant === "page";
   const isEdit = !!(initialData && initialData._id);
@@ -74,11 +80,15 @@ const TaskForm = ({
         subTasks: initialData.subTasks || [],
         team: initialData.team?._id || initialData.team || "",
         assignee: initialData.assignee?._id || initialData.assignee || "",
+        tags: initialData.tags || [],
+        labels: initialData.labels || [],
+        estimatedMinutes: initialData.estimatedMinutes || 0,
       });
       if (isPage) {
         setExpandedOptional({
           team: !!(initialData.team?._id || initialData.team),
           subtasks: !!(initialData.subTasks?.length),
+          labels: !!(initialData.tags?.length || initialData.labels?.length),
         });
       }
     }
@@ -133,8 +143,27 @@ const TaskForm = ({
 
   const resetForm = useCallback(() => {
     setFormData(INITIAL_FORM);
-    setExpandedOptional({ team: false, subtasks: false });
+    setExpandedOptional({ team: false, subtasks: false, labels: false });
+    setTagDraft("");
   }, []);
+
+  const addTag = () => {
+    const tag = tagDraft.trim().toLowerCase();
+    if (!tag) return;
+    setFormData((prev) => ({
+      ...prev,
+      tags: Array.from(new Set([...(prev.tags || []), tag])),
+    }));
+    setTagDraft("");
+    setExpandedOptional((prev) => ({ ...prev, labels: true }));
+  };
+
+  const removeTag = (tag) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: (prev.tags || []).filter((t) => t !== tag),
+    }));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -200,18 +229,23 @@ const TaskForm = ({
         team: formData.team || undefined,
         assignee: formData.assignee || undefined,
         dueDate: formData.dueDate || null,
+        tags: formData.tags || [],
+        labels: formData.labels || [],
+        estimatedMinutes: Number(formData.estimatedMinutes) || 0,
       };
 
       if (isEdit) {
         await editTask(initialData._id, payload);
         if (onSuccess) onSuccess();
       } else {
-        const success = await addTask(payload);
-        if (success) {
+        const created = await addTask(payload);
+        if (created) {
           if (createAnother) {
             resetForm();
           } else if (onSuccess) {
-            onSuccess();
+            onSuccess(created);
+          } else if (created._id) {
+            navigate(`/tasks/${created._id}`);
           } else {
             navigate("/tasks");
           }
@@ -309,9 +343,8 @@ const TaskForm = ({
               <button
                 key={value}
                 type="button"
-                className={`priority-pill priority-pill--${value} ${
-                  formData.priority === value ? "active" : ""
-                }`}
+                className={`priority-pill priority-pill--${value} ${formData.priority === value ? "active" : ""
+                  }`}
                 onClick={() => handlePriorityChange(value)}
                 aria-pressed={formData.priority === value}
               >
@@ -412,12 +445,30 @@ const TaskForm = ({
             </select>
           </div>
         )}
+
+        {isPage && (
+          <div className="form-group">
+            <label className="form-label" htmlFor="task-estimate">
+              Time estimate (minutes)
+              <span className="form-label-optional">optional</span>
+            </label>
+            <input
+              id="task-estimate"
+              type="number"
+              min="0"
+              name="estimatedMinutes"
+              value={formData.estimatedMinutes || ""}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="e.g. 60"
+            />
+          </div>
+        )}
       </section>
 
       <section
-        className={`task-form-block task-form-block--collapsible ${
-          expandedOptional.team ? "is-open" : ""
-        }`}
+        className={`task-form-block task-form-block--collapsible ${expandedOptional.team ? "is-open" : ""
+          }`}
       >
         <header className="task-form-block-header task-form-block-header--toggle">
           <div className="task-form-block-header-left">
@@ -493,9 +544,8 @@ const TaskForm = ({
       </section>
 
       <section
-        className={`task-form-block task-form-block--collapsible ${
-          expandedOptional.subtasks ? "is-open" : ""
-        }`}
+        className={`task-form-block task-form-block--collapsible ${expandedOptional.subtasks ? "is-open" : ""
+          }`}
       >
         <header className="task-form-block-header task-form-block-header--row">
           <div className="task-form-block-header-left">
@@ -583,6 +633,65 @@ const TaskForm = ({
                       <Trash2 size={14} />
                     </button>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section
+        className={`task-form-block task-form-block--collapsible ${expandedOptional.labels ? "is-open" : ""}`}
+      >
+        <header className="task-form-block-header task-form-block-header--toggle">
+          <div className="task-form-block-header-left">
+            <span className="task-form-block-step">5</span>
+            <span className="task-form-block-icon">
+              <Hash size={18} />
+            </span>
+            <div>
+              <h3 className="task-form-block-title">Tags</h3>
+              <p className="task-form-block-desc">
+                {expandedOptional.labels ? "Organize with searchable tags" : "Optional — click to expand"}
+              </p>
+            </div>
+          </div>
+          {isPage && (
+            <button
+              type="button"
+              className="section-toggle-btn"
+              onClick={() => toggleOptional("labels")}
+              aria-expanded={expandedOptional.labels}
+            >
+              {expandedOptional.labels ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+          )}
+        </header>
+
+        {(!isPage || expandedOptional.labels) && (
+          <div className="task-form-block-body">
+            <div className="task-details-inline-add">
+              <input
+                type="text"
+                value={tagDraft}
+                onChange={(e) => setTagDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                className="form-input"
+                placeholder="Add a tag and press Enter"
+              />
+              <button type="button" className="btn btn-secondary btn-sm" onClick={addTag}>
+                <Plus size={14} /> Add
+              </button>
+            </div>
+            {(formData.tags || []).length > 0 && (
+              <div className="task-details-chips" style={{ marginTop: 12 }}>
+                {formData.tags.map((tag) => (
+                  <span key={tag} className="task-tag-chip">
+                    <Hash size={12} /> {tag}
+                    <button type="button" onClick={() => removeTag(tag)} aria-label="Remove tag">
+                      ×
+                    </button>
+                  </span>
                 ))}
               </div>
             )}

@@ -42,6 +42,13 @@ const taskSchema = new mongoose.Schema(
     dueDate: { type: Date, default: null },
     scheduledDate: { type: Date, default: null },
     category: { type: String, trim: true, default: "General" },
+    labels: [
+      {
+        name: { type: String, required: true, trim: true, maxlength: 40 },
+        color: { type: String, default: "#6366f1" },
+      },
+    ],
+    tags: [{ type: String, trim: true, maxlength: 40 }],
     subTasks: [
       {
         title: { type: String, required: true, trim: true },

@@ -45,6 +45,15 @@ export const restoreTask = (id) => api.patch(`/tasks/${id}/restore`).then((r) =>
 export const permanentDeleteTask = (id) => api.delete(`/tasks/${id}`).then((r) => r.data);
 export const emptyTrash = () => api.delete("/tasks/trash/empty").then((r) => r.data);
 
+// Comments & task activity
+export const fetchTaskComments = (taskId) => api.get(`/tasks/${taskId}/comments`).then((r) => r.data);
+export const addTaskComment = (taskId, data) => api.post(`/tasks/${taskId}/comments`, data).then((r) => r.data);
+export const updateTaskComment = (taskId, commentId, data) =>
+  api.put(`/tasks/${taskId}/comments/${commentId}`, data).then((r) => r.data);
+export const deleteTaskComment = (taskId, commentId) =>
+  api.delete(`/tasks/${taskId}/comments/${commentId}`).then((r) => r.data);
+export const fetchTaskActivity = (taskId) => api.get(`/tasks/${taskId}/activity`).then((r) => r.data);
+
 // Notifications
 export const fetchNotifications = (params = {}) => api.get("/notifications", { params }).then((r) => r.data);
 export const fetchUnreadCount = () => api.get("/notifications/unread-count").then((r) => r.data);

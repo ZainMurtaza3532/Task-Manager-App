@@ -23,7 +23,10 @@ export const TaskProvider = ({ children }) => {
     mediumPriority: 0,
     lowPriority: 0,
     overdue: 0,
+    dueSoon: 0,
     trashedCount: 0,
+    upcoming: [],
+    recent: [],
   });
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,14 +96,16 @@ export const TaskProvider = ({ children }) => {
 
   const addTask = async (taskData) => {
     try {
-      await api.createTask(taskData);
+      const res = await api.createTask(taskData);
       addToast("Task created successfully", "success");
       fetchAllTasks();
       fetchStats();
-      return true;
+      // API returns { success, data: task } — support either shape
+      const created = res?.data?._id ? res.data : res;
+      return created?._id ? created : null;
     } catch (error) {
       addToast(error.response?.data?.message || "Failed to create task", "error");
-      return false;
+      return null;
     }
   };
 
