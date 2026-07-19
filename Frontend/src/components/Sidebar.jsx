@@ -18,7 +18,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <div className="sidebar-logo-icon">
             <CheckSquare size={24} />
           </div>
-          <div className="sidebar-logo-text">Task<span>Flow</span> <small style={{ fontSize: '10px', opacity: 0.7 }}>Pro 2.0</small></div>
+          <div className="sidebar-logo-text">Task<span>Flow</span> </div>
         </div>
         <button className="sidebar-close-btn" onClick={() => setIsOpen(false)}>
           <X size={20} />

@@ -68,3 +68,26 @@ export const getDueDateLabel = (dueDate, status) => {
   if (days <= 3) return { text: `${days}d left`, className: "due-soon" };
   return { text: `${days}d left`, className: "due-normal" };
 };
+
+// Format markdown text for chat bubbles
+export const formatMessage = (text) => {
+  if (!text) return null;
+  return text.split("\n").map((line, i) => {
+    const parts = [];
+    const re = /\*\*(.+?)\*\*/g;
+    let last = 0;
+    let match;
+    while ((match = re.exec(line)) !== null) {
+      if (match.index > last) parts.push(line.slice(last, match.index));
+      parts.push(<strong key={`${i}-${match.index}`}>{match[1]}</strong>);
+      last = match.index + match[0].length;
+    }
+    if (last < line.length) parts.push(line.slice(last));
+    return (
+      <span key={i}>
+        {i > 0 && <br />}
+        {parts.length ? parts : line}
+      </span>
+    );
+  });
+};

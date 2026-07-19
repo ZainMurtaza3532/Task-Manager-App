@@ -220,24 +220,24 @@ const Dashboard = () => {
       <div className="stats-grid stats-grid--dense">
         {loading
           ? Array.from({ length: 6 }).map((_, i) => (
-              <div className="stat-card" key={i}>
-                <Skeleton height={64} />
-              </div>
-            ))
+            <div className="stat-card" key={i}>
+              <Skeleton height={64} />
+            </div>
+          ))
           : statCards.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div className="stat-card" key={stat.title} style={{ "--stat-color": stat.color }}>
-                  <div className="stat-icon" style={{ background: stat.bg, color: stat.color }}>
-                    <Icon size={22} />
-                  </div>
-                  <div className="stat-info">
-                    <div className="stat-value">{stat.value}</div>
-                    <div className="stat-label">{stat.title}</div>
-                  </div>
+            const Icon = stat.icon;
+            return (
+              <div className="stat-card" key={stat.title} style={{ "--stat-color": stat.color }}>
+                <div className="stat-icon" style={{ background: stat.bg, color: stat.color }}>
+                  <Icon size={22} />
                 </div>
-              );
-            })}
+                <div className="stat-info">
+                  <div className="stat-value">{stat.value}</div>
+                  <div className="stat-label">{stat.title}</div>
+                </div>
+              </div>
+            );
+          })}
       </div>
 
       <div className="dashboard-charts">
