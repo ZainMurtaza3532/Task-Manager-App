@@ -1,9 +1,9 @@
+import "dotenv/config";
 import http from "http";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import { initSocket } from "./config/socket.js";
 import { startDueDateReminderJob } from "./jobs/dueDateReminder.js";
@@ -19,7 +19,6 @@ import calendarRoutes from "./routes/calendarRoutes.js";
 import errorHandler from "./middleware/errorHandler.js";
 import { apiLimiter, authLimiter } from "./middleware/rateLimiter.js";
 
-dotenv.config();
 connectDB();
 
 const app = express();
@@ -29,7 +28,6 @@ initSocket(server);
 startDueDateReminderJob();
 
 const corsOrigins = [
-  "https://task-manager-app-theta-blue.vercel.app",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ];

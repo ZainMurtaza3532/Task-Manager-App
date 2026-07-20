@@ -85,7 +85,7 @@ const TaskDetails = () => {
       ]);
       setComments(commentsRes.data || []);
       setActivity(activityRes.data || []);
-      setTimeLogs(timeRes.data || []);
+      setTimeLogs(timeRes.data?.entries || (Array.isArray(timeRes.data) ? timeRes.data : []));
     } catch {
       addToast("Task not found", "error");
       navigate("/tasks");

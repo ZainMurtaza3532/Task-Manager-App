@@ -21,12 +21,10 @@ export const SORT_OPTIONS = [
   { value: "title", label: "Title (A-Z)" },
 ];
 
-const PROD_API = "https://task-manager-app-production-7c24.up.railway.app/api";
 const DEV_API = "http://127.0.0.1:5000/api";
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? DEV_API : PROD_API);
+  import.meta.env.VITE_API_URL || DEV_API;
 
 export const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ||
