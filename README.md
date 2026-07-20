@@ -1,9 +1,6 @@
-﻿# TaskFlow Pro 2.0 - Enterprise SaaS MERN Task Manager
+# TaskFlow Pro 2.0 - Enterprise SaaS MERN Task Manager
 
 TaskFlow Pro 2.0 is a full-stack task management application built with the MERN stack. It combines personal productivity, team collaboration, real-time notifications, scheduling, time tracking, file uploads, and AI assistance into a single SaaS-ready app.
-
-Live Demo: https://task-manager-app-theta-blue.vercel.app
-API: https://task-manager-app-production-7c24.up.railway.app
 
 ---
 
@@ -27,8 +24,7 @@ API: https://task-manager-app-production-7c24.up.railway.app
 
 - Frontend: React 19, Vite 6, React Router 7, Tailwind CSS 4, Chart.js, react-big-calendar, date-fns, Socket.IO Client, @dnd-kit, Lucide React
 - Backend: Node.js, Express 5, Mongoose 8, Socket.IO, JWT, bcryptjs, Helmet, rate limiting, Multer, Cloudinary, OpenAI
-- Database: MongoDB Atlas
-- Deployment: Vercel (Frontend), Railway (Backend)
+- Database: MongoDB (Local or Atlas)
 
 ---
 
@@ -200,24 +196,6 @@ OPENAI_MODEL=gpt-4o-mini
 - `join_team` - Client -> Server: Join team room
 
 ---
-
-## Deployment
-
-### Backend (Railway)
-
-1. Link the GitHub repository.
-2. Set the root directory to `Backend`.
-3. Add environment variables from `.env.example`.
-4. Railway will assign `PORT` automatically.
-
-### Frontend (Vercel)
-
-1. Link the GitHub repository.
-2. Set the root directory to `Frontend`.
-3. Add environment variables:
-   - `VITE_API_URL` = `https://<railway-app>.up.railway.app/api`
-   - `VITE_SOCKET_URL` = `https://<railway-app>.up.railway.app`
-4. Deploy.
 
 ---
 
