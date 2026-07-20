@@ -8,6 +8,14 @@ const Layout = () => {
 
   return (
     <div className="app-layout">
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-backdrop show" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       <div className={`main-wrapper ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />

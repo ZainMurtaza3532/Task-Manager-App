@@ -1,6 +1,6 @@
-# TaskFlow Pro 2.0 - Enterprise SaaS MERN Task Manager
+# TaskFlow - Enterprise SaaS MERN Task Manager
 
-TaskFlow Pro 2.0 is a full-stack task management application built with the MERN stack. It combines personal productivity, team collaboration, real-time notifications, scheduling, time tracking, file uploads, and AI assistance into a single SaaS-ready app.
+TaskFlow is a full-stack task management application built with the MERN stack. It combines personal productivity, team collaboration, real-time notifications, scheduling, time tracking, file uploads, and AI assistance into a single SaaS-ready app.
 
 ---
 

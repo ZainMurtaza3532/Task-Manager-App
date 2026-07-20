@@ -532,7 +532,7 @@ textarea {
   flex-direction: column;
   gap: 6px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--bg-input);
   border-radius: 12px;
   color: var(--text-primary);
 }
@@ -2360,9 +2360,9 @@ textarea {
 .legend-hint { margin-left: auto; font-style: italic; color: var(--text-muted); }
 
 .calendar-container.dark .rbc-toolbar button,
-.calendar-container .rbc-toolbar button { color: var(--text-primary); border-color: var(--border-color); }
+.calendar-container .rbc-toolbar button { color: var(--text-primary) !important; border-color: var(--border-color) !important; }
 .calendar-container .rbc-event { border-radius: 6px !important; }
-.calendar-container .rbc-event-label { font-size: 11px; }
+.calendar-container .rbc-event-label { font-size: 11px !important; }
 .calendar-container .rbc-date-cell { padding: 6px 8px; font-size: 13px; }
 .calendar-container .rbc-month-row { min-height: 90px; }
 
@@ -2378,13 +2378,14 @@ textarea {
 .calendar-container { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px; }
 .calendar-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; font-size: 12px; color: var(--text-secondary); }
 .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
-.rbc-calendar { color: var(--text-primary); }
-.rbc-toolbar button { color: var(--text-primary); border-color: var(--border-color); }
-.rbc-off-range-bg { background: var(--bg-hover); }
-.rbc-today { background: var(--accent-light); }
-.rbc-header { padding: 8px; font-weight: 600; border-color: var(--border-color) !important; }
-.rbc-month-view, .rbc-time-view { border-color: var(--border-color); }
-.rbc-day-bg + .rbc-day-bg { border-color: var(--border-color); }
+.calendar-container .rbc-calendar { color: var(--text-primary) !important; }
+.calendar-container .rbc-toolbar button { color: var(--text-primary) !important; border-color: var(--border-color) !important; }
+.calendar-container .rbc-off-range-bg { background: var(--bg-hover) !important; }
+.calendar-container .rbc-off-range { color: var(--text-muted) !important; }
+.calendar-container .rbc-today { background: var(--accent-light) !important; }
+.calendar-container .rbc-header { padding: 8px; font-weight: 600; border-color: var(--border-color) !important; color: var(--text-primary) !important; }
+.calendar-container .rbc-month-view, .calendar-container .rbc-time-view { border-color: var(--border-color) !important; }
+.calendar-container .rbc-day-bg + .rbc-day-bg { border-color: var(--border-color) !important; }
 
 /* Time Tracking */
 .time-sync-badge {
@@ -5169,3 +5170,152 @@ textarea {
 @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 .typing-text { font-size: 11px; color: var(--text-muted); margin-left: 10px; }
 
+
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (Media Queries)
+   ========================================================================== */
+
+/* ────── Tablet & Small Desktop (Max-Width: 1024px) ────── */
+@media (max-width: 1024px) {
+  /* Sidebar handling */
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-close-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Main content & Header */
+  .main-wrapper {
+    margin-left: 0 !important;
+  }
+  .header {
+    left: 0 !important;
+    padding: 0 20px;
+  }
+  .hamburger-btn {
+    display: block !important;
+  }
+
+  /* Grid adjustments */
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  
+  /* Kanban Board responsive */
+  .kanban-board {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 10px;
+    display: flex;
+    gap: 16px;
+  }
+  .kanban-column {
+    min-width: 320px;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
+
+/* ────── Mobile (Max-Width: 768px) ────── */
+@media (max-width: 768px) {
+  /* Content padding */
+  .main-content {
+    padding: 16px 12px;
+  }
+  
+  /* Header specific */
+  .header-search {
+    max-width: none;
+    flex: 1;
+  }
+  .header-left {
+    gap: 8px;
+  }
+  .user-name {
+    display: none !important;
+  }
+  .workspace-switcher {
+    display: none !important; /* Hide workspace switcher on very small screens to save space */
+  }
+  
+  /* Grids */
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .tasks-grid {
+    grid-template-columns: 1fr;
+  }
+  .kanban-stats-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .kanban-stat-card {
+    width: 100%;
+  }
+
+  /* Forms & Modals */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal-content, .edit-modal-content {
+    width: 95% !important;
+    margin: 10px auto;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  /* Page headers */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .page-header .btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  
+  /* Calendar specific */
+  .calendar-wrapper {
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  .rbc-calendar {
+    min-width: 700px !important; /* Force scroll on mobile */
+  }
+  .calendar-summary-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ────── Small Mobile (Max-Width: 480px) ────── */
+@media (max-width: 480px) {
+  .header {
+    padding: 0 12px;
+  }
+  .header-search input {
+    padding-left: 32px;
+    font-size: 13px;
+  }
+  .header-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .user-avatar {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  /* Ensure kanban card fits on small mobile */
+  .kanban-column {
+    min-width: 280px;
+  }
+}
